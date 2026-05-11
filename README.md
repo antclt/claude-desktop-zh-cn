@@ -6,6 +6,12 @@ macOS 可双击 `install-mac.command`，Windows 可右键管理员运行 `instal
 
 本汉化方案仅支持使用 API 的方式。请先参照 https://linux.do/t/topic/2032192 配置
 
+## 界面截图
+
+![Claude Desktop 中文界面截图](docs/images/claude-desktop-zh-cn-home.png)
+
+![Claude Desktop 中文设置界面截图](docs/images/claude-desktop-zh-cn-settings.png)
+
 ## 功能特点
 
 - 一键安装 Claude Desktop 中文界面资源，支持 macOS 和 Windows。
