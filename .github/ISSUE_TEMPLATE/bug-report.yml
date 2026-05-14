@@ -24,9 +24,9 @@ body:
   - type: input
     id: claude_version
     attributes:
-      label: 版本是多少
+      label: Clade Desktop版本是多少
       description: 请填写 Claude Desktop 版本号，例如 0.11.2
-      placeholder: 例如 0.11.2
+      placeholder: 例如 x.xx.x
     validations:
       required: true
 
