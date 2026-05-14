@@ -9,5 +9,19 @@
   ["\"aria-label\":\"Search projects\"", "\"aria-label\":\"搜索项目\""],
   ["recent:\"Recent\"", "recent:\"最近\""],
   ["created:\"Created\"", "created:\"已创建\""],
-  ["alphabetical:\"Alphabetical\"", "alphabetical:\"按字母顺序\""]
+  ["alphabetical:\"Alphabetical\"", "alphabetical:\"按字母顺序\""],
+  ["title:\"Appearance\"", "title:\"外观\""],
+  ["\"Appearance\"", "\"外观\""],
+  ["\"Display instructions, policies, or notices as a persistent strip across the top of the app window.\"", "\"在应用窗口顶部持续显示说明、政策或通知。\""],
+  ["\"Organization banner\"", "\"组织横幅\""],
+  ["\"A persistent banner across the top of the app window after sign-in.\"", "\"登录后在应用窗口顶部持续显示的横幅。\""],
+  ["\"Show banner\"", "\"显示横幅\""],
+  ["\"Banner text\"", "\"横幅文本\""],
+  ["\"Internal use only\"", "\"仅供内部使用\""],
+  ["\"Single line, truncated on overflow. Maximum 200 characters.\"", "\"单行，溢出时截断。最多 200 个字符。\""],
+  ["\"Background color\"", "\"背景颜色\""],
+  ["\"Six-digit hex (#RRGGBB). Applied exactly as configured; not theme-adapted.\"", "\"六位十六进制颜色（#RRGGBB）。将完全按配置应用；不会随主题调整。\""],
+  ["\"Text color\"", "\"文本颜色\""],
+  ["\"Link URL\"", "\"链接 URL\""],
+  ["\"Optional HTTPS URL. The banner text becomes a link when set.\"", "\"可选 HTTPS URL。设置后，横幅文本会变为链接。\""]
 ]

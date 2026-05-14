@@ -9,5 +9,19 @@
   ["\"aria-label\":\"Search projects\"", "\"aria-label\":\"搜尋項目\""],
   ["recent:\"Recent\"", "recent:\"最近\""],
   ["created:\"Created\"", "created:\"已建立\""],
-  ["alphabetical:\"Alphabetical\"", "alphabetical:\"按字母順序\""]
+  ["alphabetical:\"Alphabetical\"", "alphabetical:\"按字母順序\""],
+  ["title:\"Appearance\"", "title:\"外觀\""],
+  ["\"Appearance\"", "\"外觀\""],
+  ["\"Display instructions, policies, or notices as a persistent strip across the top of the app window.\"", "\"在應用程式視窗頂部持續顯示說明、政策或通知。\""],
+  ["\"Organization banner\"", "\"組織橫幅\""],
+  ["\"A persistent banner across the top of the app window after sign-in.\"", "\"登入後在應用程式視窗頂部持續顯示的橫幅。\""],
+  ["\"Show banner\"", "\"顯示橫幅\""],
+  ["\"Banner text\"", "\"橫幅文本\""],
+  ["\"Internal use only\"", "\"僅供內部使用\""],
+  ["\"Single line, truncated on overflow. Maximum 200 characters.\"", "\"單行，溢出時截斷。最多 200 個字符。\""],
+  ["\"Background color\"", "\"背景顏色\""],
+  ["\"Six-digit hex (#RRGGBB). Applied exactly as configured; not theme-adapted.\"", "\"六位十六進制顏色（#RRGGBB）。會完全按配置套用；不會隨主題調整。\""],
+  ["\"Text color\"", "\"文本顏色\""],
+  ["\"Link URL\"", "\"連結 URL\""],
+  ["\"Optional HTTPS URL. The banner text becomes a link when set.\"", "\"可選 HTTPS URL。設置後，橫幅文本會變成連結。\""]
 ]
