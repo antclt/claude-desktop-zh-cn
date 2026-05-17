@@ -880,6 +880,28 @@ def set_user_locale(user_home: Path, lang_code: str) -> None:
     print(f"Set Claude config locale: {config}")
 
 
+def has_third_party_api_config(user_home: Path) -> bool:
+    config_library = user_home / "Library/Application Support/Claude-3p/configLibrary"
+    if not config_library.is_dir():
+        return False
+    return any(config_library.iterdir())
+
+
+def confirm_install_without_third_party_api_config(user_home: Path) -> bool:
+    if has_third_party_api_config(user_home):
+        return True
+
+    prompt = "未配置第三方API，程序运行后无效，请参照github上readme修改，是否继续配置？ [y/n]: "
+    while True:
+        choice = input(prompt).strip().lower()
+        if choice == "y":
+            return True
+        if choice == "n":
+            print("已取消配置，未修改 Claude Desktop。")
+            return False
+        print("请输入 y 或 n。")
+
+
 def backup_and_replace(original: Path, patched: Path, dry_run: bool) -> Path:
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     backup = original.with_name(f"Claude.backup-before-zh-CN-{stamp}.app")
@@ -1007,6 +1029,9 @@ def main() -> int:
     lang_code = args.lang
     config = get_language_config(lang_code)
     label = config["label"]
+
+    if not confirm_install_without_third_party_api_config(args.user_home):
+        return 0
 
     require_file(config["frontend_translation"])
     require_file(config["frontend_hardcoded"])

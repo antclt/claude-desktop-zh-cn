@@ -1259,6 +1259,38 @@ function Set-ClaudeLocale {
     }
 }
 
+function Test-ThirdPartyApiConfigExists {
+    if (-not $env:LOCALAPPDATA) {
+        return $false
+    }
+
+    $configLibrary = Join-Path $env:LOCALAPPDATA "Claude-3p\configLibrary"
+    if (-not (Test-Path $configLibrary -PathType Container)) {
+        return $false
+    }
+
+    $entries = @(Get-ChildItem $configLibrary -Force -ErrorAction SilentlyContinue | Select-Object -First 1)
+    return $entries.Count -gt 0
+}
+
+function Confirm-InstallWithoutThirdPartyApiConfig {
+    if (Test-ThirdPartyApiConfigExists) {
+        return $true
+    }
+
+    while ($true) {
+        $selection = (Read-Host "未配置第三方API，程序运行后无效，请参照github上readme修改，是否继续配置？ [y/n]").Trim()
+        switch -Regex ($selection) {
+            '^[Yy]$' { return $true }
+            '^[Nn]$' {
+                Write-Host "已取消配置，未修改 Claude Desktop。" -ForegroundColor Yellow
+                return $false
+            }
+            default { Write-Host "请输入 y 或 n。" -ForegroundColor Yellow }
+        }
+    }
+}
+
 function Remove-LanguageFiles {
     param([string]$ResourcesPath)
 
@@ -1313,10 +1345,15 @@ function Install-WindowsLanguagePack {
     $label = Get-LanguageLabel $LanguageCode
     Write-Host "=== Claude Desktop Windows $label 补丁 ===" -ForegroundColor Cyan
 
-    Write-Step "[1/8] 检查语言资源"
+    Write-Step "[1/9] 检查第三方 API 配置"
+    if (-not (Confirm-InstallWithoutThirdPartyApiConfig)) {
+        return
+    }
+
+    Write-Step "[2/9] 检查语言资源"
     $pack = Get-LanguageResources $LanguageCode
 
-    Write-Step "[2/8] 查找 Claude Desktop"
+    Write-Step "[3/9] 查找 Claude Desktop"
     $paths = Get-ClaudeResourcesPath
     $claudePath = $paths["App"]
     $resourcesPath = $paths["Resources"]
@@ -1326,24 +1363,24 @@ function Install-WindowsLanguagePack {
     Write-Step "关闭 Claude Desktop"
     Stop-ClaudeProcesses
 
-    Write-Step "[3/8] 准备写入权限"
+    Write-Step "[4/9] 准备写入权限"
     Enable-WriteAccess $resourcesPath
 
-    Write-Step "[4/8] 写入 $label 资源"
+    Write-Step "[5/9] 写入 $label 资源"
     Install-LanguageFiles $resourcesPath $pack $LanguageCode
 
-    Write-Step "[5/8] 注册中文语言"
+    Write-Step "[6/9] 注册中文语言"
     Register-Language $resourcesPath $LanguageCode
 
-    Write-Step "[6/8] 汉化硬编码界面文本"
+    Write-Step "[7/9] 汉化硬编码界面文本"
     Patch-HardcodedFrontendStrings $resourcesPath $LanguageCode
     Patch-LanguageDisplayNames $resourcesPath
     Patch-HardcodedMainProcessMenuLabels $resourcesPath
 
-    Write-Step "[7/8] 修复第三方模型名校验"
+    Write-Step "[8/9] 修复第三方模型名校验"
     Patch-Custom3PModelValidation $resourcesPath
 
-    Write-Step "[8/8] 写入用户语言配置"
+    Write-Step "[9/9] 写入用户语言配置"
     Set-ClaudeLocale $LanguageCode
 
     Write-Step "重启 Claude Desktop"
