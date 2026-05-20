@@ -1,67 +1,606 @@
 [
-  ["title:\"Projects\"", "title:\"项目\""],
-  ["label:\"Projects\"", "label:\"项目\""],
-  ["children:\"Projects\"", "children:\"项目\""],
-  ["=\"New project\"", "=\"新项目\""],
-  ["placeholder:\"Search projects\"", "placeholder:\"搜索项目\""],
-  ["placeholder:\"Search projects...\"", "placeholder:\"搜索项目\""],
-  ["placeholder:\"Search projects…\"", "placeholder:\"搜索项目\""],
-  ["\"aria-label\":\"Search projects\"", "\"aria-label\":\"搜索项目\""],
-  ["recent:\"Recent\"", "recent:\"最近\""],
-  ["created:\"Created\"", "created:\"已创建\""],
-  ["alphabetical:\"Alphabetical\"", "alphabetical:\"按字母顺序\""],
-  ["title:\"Appearance\"", "title:\"外观\""],
-  ["\"Appearance\"", "\"外观\""],
-  ["\"Display instructions, policies, or notices as a persistent strip across the top of the app window.\"", "\"在应用窗口顶部持续显示说明、政策或通知。\""],
-  ["\"Organization banner\"", "\"组织横幅\""],
-  ["\"A persistent banner across the top of the app window after sign-in.\"", "\"登录后在应用窗口顶部持续显示的横幅。\""],
-  ["\"Show banner\"", "\"显示横幅\""],
-  ["\"Banner text\"", "\"横幅文本\""],
-  ["\"Internal use only\"", "\"仅供内部使用\""],
-  ["\"Single line, truncated on overflow. Maximum 200 characters.\"", "\"单行，溢出时截断。最多 200 个字符。\""],
-  ["\"Background color\"", "\"背景颜色\""],
-  ["\"Six-digit hex (#RRGGBB). Applied exactly as configured; not theme-adapted.\"", "\"六位十六进制颜色（#RRGGBB）。将完全按配置应用；不会随主题调整。\""],
-  ["\"Text color\"", "\"文本颜色\""],
-  ["\"Link URL\"", "\"链接 URL\""],
-  ["\"Optional HTTPS URL. The banner text becomes a link when set.\"", "\"可选 HTTPS URL。设置后，横幅文本会变为链接。\""],
-  ["cancelText:y=\"Cancel\"", "cancelText:y=\"取消\""],
-  ["title:\"Disable claude:// deep-link handling\"", "title:\"禁用 claude:// 深度链接处理\""],
-  ["\"Stop external apps and websites from opening Cowork via claude:// links.\"", "\"阻止外部应用和网站通过 claude:// 链接打开 Cowork。\""],
-  ["label:\"Display name\"", "label:\"显示名称\""],
-  ["\"Shown in the model picker. Leave blank to auto-format from the ID.\"", "\"显示在模型选择器中。留空则根据 ID 自动格式化。\""],
-  ["Doesn't look like an Anthropic model — ", "看起来不像 Anthropic 模型 — "],
-  ["\"expected a gateway model route referencing an Anthropic model (e.g. claude-sonnet-4-5, anthropic/claude-*). Name routes to match the underlying model.\"", "\"需要一个引用 Anthropic 模型的网关模型路由（例如 claude-sonnet-4-5、anthropic/claude-*）。路由名称应与底层模型一致。\""],
-  ["\"expected a Foundry deployment name referencing an Anthropic model (e.g. claude-sonnet-4-5). Name deployments to match the underlying model.\"", "\"需要一个引用 Anthropic 模型的 Foundry 部署名称（例如 claude-sonnet-4-5）。部署名称应与底层模型一致。\""],
-  ["defaultMessage:\"Paused\",id:\"C2iTEHtK//\"", "defaultMessage:\"已暂停\",id:\"C2iTEHtK//\""],
-  ["t?\"Completed\":\"Paused\"", "t?\"已完成\":\"已暂停\""],
-  ["DJt={recents:\"最近使用\",shared:\"Shared\"}", "DJt={recents:\"最近使用\",shared:\"已共享\"}"],
-  ["zJt={all:\"All\",active:\"Active\",archived:\"Archived\"}", "zJt={all:\"全部\",active:\"活跃\",archived:\"已归档\"}"],
-  ["FJt={all:\"No tasks yet.\",active:\"No active tasks.\",archived:\"No archived tasks.\"}", "FJt={all:\"还没有任务。\",active:\"还没有活跃任务。\",archived:\"还没有已归档任务。\"}"],
-  ["title:\"Tasks\",noun:\"task\",nouns:\"tasks\",searchPlaceholder:\"Filter tasks\",noResults:\"No tasks match your search.\",emptyByTab:{recents:\"No tasks yet.\",shared:\"You haven't shared any tasks yet.\"}", "title:\"任务\",noun:\"任务\",nouns:\"任务\",searchPlaceholder:\"筛选任务\",noResults:\"没有匹配的任务。\",emptyByTab:{recents:\"还没有任务。\",shared:\"你还没有共享任何任务。\"}"],
-  ["title:\"任务\",noun:\"任务\",nouns:\"任务\",searchPlaceholder:\"筛选任务\",noResults:\"没有匹配的任务。\",emptyByTab:{recents:\"还没有任务。\",shared:\"你还没有共享任何任务。\"},$Jt=", "title:\"任务\",noun:\"任务\",nouns:\"任务\",searchPlaceholder:\"筛选任务\",noResults:\"没有匹配的任务。\",emptyByTab:{recents:\"还没有任务。\",shared:\"你还没有共享任何任务。\"}},$Jt="],
-  ["defaultMessage:\"Tasks\",id:\"Ajmo+3Cu3b\"", "defaultMessage:\"任务\",id:\"Ajmo+3Cu3b\""],
-  ["defaultMessage:\"Active\",id:\"3a5wL8wo40\"", "defaultMessage:\"活跃\",id:\"3a5wL8wo40\""],
-  ["defaultMessage:\"Archived\",id:\"0HT+IbyW6O\"", "defaultMessage:\"已归档\",id:\"0HT+IbyW6O\""],
-  ["defaultMessage:\"All\",id:\"zQvVDJ+j59\"", "defaultMessage:\"全部\",id:\"zQvVDJ+j59\""],
-  ["defaultMessage:\"Status\",id:\"tzMNF3jWoU\"", "defaultMessage:\"状态\",id:\"tzMNF3jWoU\""],
-  ["defaultMessage:\"Environment\",id:\"K7kuIZkkhY\"", "defaultMessage:\"环境\",id:\"K7kuIZkkhY\""],
-  ["defaultMessage:\"Local\",id:\"W4SaxYXWRk\"", "defaultMessage:\"本地\",id:\"W4SaxYXWRk\""],
-  ["defaultMessage:\"Cloud\",id:\"fiPvwYljok\"", "defaultMessage:\"云端\",id:\"fiPvwYljok\""],
-  ["defaultMessage:\"Remote Control\",id:\"4mv6Z9Tv+V\"", "defaultMessage:\"远程控制\",id:\"4mv6Z9Tv+V\""],
-  ["Ca=\"Local\"", "Ca=\"本地\""],
-  ["Sa=\"Cloud\"", "Sa=\"云端\""],
-  ["_a=\"All\"", "_a=\"全部\""],
-  ["Tr={local:\"Local\",remote:\"Cloud\",bridge:\"Remote Control\"}", "Tr={local:\"本地\",remote:\"云端\",bridge:\"远程控制\"}"],
-  ["ht=e=>0===e?\"All\"", "ht=e=>0===e?\"全部\""],
-  ["defaultMessage:\"Untitled task\",id:\"RuyWs2JrH9\"", "defaultMessage:\"未命名任务\",id:\"RuyWs2JrH9\""],
-  ["LJt=\"Untitled\"", "LJt=\"未命名\""],
-  ["e.title??\"Untitled Session\"", "e.title??\"未命名会话\""],
-  ["e.title??\"Local task\"", "e.title??\"本地任务\""],
-  ["sessionTitle:t.title??\"Local task\"", "sessionTitle:t.title??\"本地任务\""],
-  ["]:t.title??\"Local task\"]", "]:t.title??\"本地任务\"]"],
-  ["zHt={nextRun:\"Next run\",name:\"Name\"}", "zHt={nextRun:\"下次执行\",name:\"任务名称\"}"],
-  ["hint:\"Full URL of the inference gateway endpoint.\"", "hint:\"推理网关端点的完整 URL。\""],
-  ["hint:\"How the gateway credential is sent. Choose Bearer or x-api-key for a static key or credential-helper output; choose SSO to have each user sign in via your identity provider.\"", "hint:\"网关凭据的发送方式。静态密钥或凭据辅助脚本输出请选择 Bearer 或 x-api-key；如需每位用户通过你的身份提供商登录，请选择 SSO。\""],
-  ["hint:\"Org-pushed MCP servers — remote (HTTP/SSE) or local (stdio command). May embed bearer tokens.\"", "hint:\"组织推送的 MCP 服务器：远程（HTTP/SSE）或本地（stdio 命令）。可能嵌入 Bearer 令牌。\""],
-  ["reason:\"Crash and error reports are how we diagnose failures specific to your inference setup. Support turnaround will be slower without them.\"", "reason:\"崩溃和错误报告用于诊断你的推理配置中特定的故障。没有这些报告，支持处理会更慢。\""]
+  [
+    "\"A persistent banner across the top of the app window after sign-in.\"",
+    "\"登录后在应用窗口顶部持续显示的横幅。\""
+  ],
+  [
+    "\"Add model\"",
+    "\"添加模型\""
+  ],
+  [
+    "\"Add server policy\"",
+    "\"添加服务器策略\""
+  ],
+  [
+    "\"Add server\"",
+    "\"添加服务器\""
+  ],
+  [
+    "\"Appearance\"",
+    "\"外观\""
+  ],
+  [
+    "\"Background color\"",
+    "\"背景颜色\""
+  ],
+  [
+    "\"Banner text\"",
+    "\"横幅文本\""
+  ],
+  [
+    "\"Copy hostnames\"",
+    "\"复制主机名\""
+  ],
+  [
+    "\"Create your first scheduled task\"",
+    "\"创建你的第一个计划任务\""
+  ],
+  [
+    "\"Daily brief\"",
+    "\"每日简报\""
+  ],
+  [
+    "\"Display instructions, policies, or notices as a persistent strip across the top of the app window.\"",
+    "\"在应用窗口顶部持续显示说明、政策或通知。\""
+  ],
+  [
+    "\"Download .txt\"",
+    "\"下载 .txt\""
+  ],
+  [
+    "\"Firewall allowlist\"",
+    "\"防火墙允许列表\""
+  ],
+  [
+    "\"Internal use only\"",
+    "\"仅供内部使用\""
+  ],
+  [
+    "\"Link URL\"",
+    "\"链接 URL\""
+  ],
+  [
+    "\"New chat\"",
+    "\"新建聊天\""
+  ],
+  [
+    "\"New session\"",
+    "\"新会话\""
+  ],
+  [
+    "\"New task\"",
+    "\"新建任务\""
+  ],
+  [
+    "\"No organization plugins found\"",
+    "\"未找到组织插件\""
+  ],
+  [
+    "\"No scheduled tasks yet.\"",
+    "\"尚无计划任务。\""
+  ],
+  [
+    "\"Optional HTTPS URL. The banner text becomes a link when set.\"",
+    "\"可选 HTTPS URL。设置后，横幅文本会变为链接。\""
+  ],
+  [
+    "\"Organization banner\"",
+    "\"组织横幅\""
+  ],
+  [
+    "\"Pinned\"",
+    "\"已固定\""
+  ],
+  [
+    "\"Recents\"",
+    "\"最近使用\""
+  ],
+  [
+    "\"Search\"",
+    "\"搜索\""
+  ],
+  [
+    "\"Show banner\"",
+    "\"显示横幅\""
+  ],
+  [
+    "\"Shown in the model picker. Leave blank to auto-format from the ID.\"",
+    "\"显示在模型选择器中。留空则根据 ID 自动格式化。\""
+  ],
+  [
+    "\"Single line, truncated on overflow. Maximum 200 characters.\"",
+    "\"单行，溢出时截断。最多 200 个字符。\""
+  ],
+  [
+    "\"Six-digit hex (#RRGGBB). Applied exactly as configured; not theme-adapted.\"",
+    "\"六位十六进制颜色（#RRGGBB）。将完全按配置应用；不会随主题调整。\""
+  ],
+  [
+    "\"Starting up...\"",
+    "\"正在启动...\""
+  ],
+  [
+    "\"Starting up…\"",
+    "\"正在启动...\""
+  ],
+  [
+    "\"Stop external apps and websites from opening Cowork via claude:// links.\"",
+    "\"阻止外部应用和网站通过 claude:// 链接打开 Cowork。\""
+  ],
+  [
+    "\"Test connection\"",
+    "\"测试连接\""
+  ],
+  [
+    "\"Test connectivity\"",
+    "\"测试连通性\""
+  ],
+  [
+    "\"Test model discovery\"",
+    "\"测试模型发现\""
+  ],
+  [
+    "\"Text color\"",
+    "\"文本颜色\""
+  ],
+  [
+    "\"View all\"",
+    "\"查看全部\""
+  ],
+  [
+    "\"Weekly review\"",
+    "\"每周回顾\""
+  ],
+  [
+    "\"Write a message...\"",
+    "\"输入消息...\""
+  ],
+  [
+    "\"Write a message…\"",
+    "\"输入消息...\""
+  ],
+  [
+    "\"aria-label\":\"Search projects\"",
+    "\"aria-label\":\"搜索项目\""
+  ],
+  [
+    "\"expected a Foundry deployment name referencing an Anthropic model (e.g. claude-sonnet-4-5). Name deployments to match the underlying model.\"",
+    "\"需要一个引用 Anthropic 模型的 Foundry 部署名称（例如 claude-sonnet-4-5）。部署名称应与底层模型一致。\""
+  ],
+  [
+    "\"expected a gateway model route referencing an Anthropic model (e.g. claude-sonnet-4-5, anthropic/claude-*). Name routes to match the underlying model.\"",
+    "\"需要一个引用 Anthropic 模型的网关模型路由（例如 claude-sonnet-4-5、anthropic/claude-*）。路由名称应与底层模型一致。\""
+  ],
+  [
+    "0===e.length?\"All\"",
+    "0===e.length?\"全部\""
+  ],
+  [
+    "=\"New project\"",
+    "=\"新项目\""
+  ],
+  [
+    "Ca=\"Local\"",
+    "Ca=\"本地\""
+  ],
+  [
+    "DJt={recents:\"最近使用\",shared:\"Shared\"}",
+    "DJt={recents:\"最近使用\",shared:\"已共享\"}"
+  ],
+  [
+    "Doesn't look like an Anthropic model — ",
+    "看起来不像 Anthropic 模型 — "
+  ],
+  [
+    "Enable Main Process Debugger",
+    "启用主进程调试器"
+  ],
+  [
+    "FJt={all:\"No tasks yet.\",active:\"No active tasks.\",archived:\"No archived tasks.\"}",
+    "FJt={all:\"还没有任务。\",active:\"还没有活跃任务。\",archived:\"还没有已归档任务。\"}"
+  ],
+  [
+    "LJt=\"Untitled\"",
+    "LJt=\"未命名\""
+  ],
+  [
+    "Record Memory Trace (auto-stop)",
+    "记录内存跟踪 (自动)"
+  ],
+  [
+    "Record Performance Trace",
+    "记录性能跟踪"
+  ],
+  [
+    "Sa=\"Cloud\"",
+    "Sa=\"云端\""
+  ],
+  [
+    "Tr={local:\"Local\",remote:\"Cloud\",bridge:\"Remote Control\"}",
+    "Tr={local:\"本地\",remote:\"云端\",bridge:\"远程控制\"}"
+  ],
+  [
+    "Write Main Process Heap Snapshot",
+    "写入主进程堆快照"
+  ],
+  [
+    "[\"0\",\"All\"]",
+    "[\"0\",\"全部\"]"
+  ],
+  [
+    "[\"active\",\"Active\"]",
+    "[\"active\",\"活跃\"]"
+  ],
+  [
+    "[\"all\",\"All\"]",
+    "[\"all\",\"全部\"]"
+  ],
+  [
+    "[\"archived\",\"Archived\"]",
+    "[\"archived\",\"已归档\"]"
+  ],
+  [
+    "[\"date\",\"Date\"]",
+    "[\"date\",\"日期\"]"
+  ],
+  [
+    "[\"environment\",\"Environment\"]",
+    "[\"environment\",\"环境\"]"
+  ],
+  [
+    "[\"none\",\"None\"]",
+    "[\"none\",\"无\"]"
+  ],
+  [
+    "[\"project\",\"Project\"]",
+    "[\"project\",\"项目\"]"
+  ],
+  [
+    "[\"state\",\"State\"]",
+    "[\"state\",\"状态\"]"
+  ],
+  [
+    "]:t.title??\"Local task\"]",
+    "]:t.title??\"本地任务\"]"
+  ],
+  [
+    "_a=\"All\"",
+    "_a=\"全部\""
+  ],
+  [
+    "alphabetical:\"Alphabetical\"",
+    "alphabetical:\"按字母顺序\""
+  ],
+  [
+    "cancelText:y=\"Cancel\"",
+    "cancelText:y=\"取消\""
+  ],
+  [
+    "children:\"All\"",
+    "children:\"全部\""
+  ],
+  [
+    "children:\"No scheduled tasks match your search.\"",
+    "children:\"没有匹配的计划任务。\""
+  ],
+  [
+    "children:\"Project\"",
+    "children:\"项目\""
+  ],
+  [
+    "children:\"Projects\"",
+    "children:\"项目\""
+  ],
+  [
+    "created:\"Created\"",
+    "created:\"已创建\""
+  ],
+  [
+    "defaultMessage:\"Active\",id:\"3a5wL8wo40\"",
+    "defaultMessage:\"活跃\",id:\"3a5wL8wo40\""
+  ],
+  [
+    "defaultMessage:\"All\",id:\"zQvVDJ+j59\"",
+    "defaultMessage:\"全部\",id:\"zQvVDJ+j59\""
+  ],
+  [
+    "defaultMessage:\"Archived\",id:\"0HT+IbyW6O\"",
+    "defaultMessage:\"已归档\",id:\"0HT+IbyW6O\""
+  ],
+  [
+    "defaultMessage:\"Cloud\",id:\"fiPvwYljok\"",
+    "defaultMessage:\"云端\",id:\"fiPvwYljok\""
+  ],
+  [
+    "defaultMessage:\"Environment\",id:\"K7kuIZkkhY\"",
+    "defaultMessage:\"环境\",id:\"K7kuIZkkhY\""
+  ],
+  [
+    "defaultMessage:\"Local\",id:\"W4SaxYXWRk\"",
+    "defaultMessage:\"本地\",id:\"W4SaxYXWRk\""
+  ],
+  [
+    "defaultMessage:\"Paused\",id:\"C2iTEHtK//\"",
+    "defaultMessage:\"已暂停\",id:\"C2iTEHtK//\""
+  ],
+  [
+    "defaultMessage:\"Remote Control\",id:\"4mv6Z9Tv+V\"",
+    "defaultMessage:\"远程控制\",id:\"4mv6Z9Tv+V\""
+  ],
+  [
+    "defaultMessage:\"Status\",id:\"tzMNF3jWoU\"",
+    "defaultMessage:\"状态\",id:\"tzMNF3jWoU\""
+  ],
+  [
+    "defaultMessage:\"Tasks\",id:\"Ajmo+3Cu3b\"",
+    "defaultMessage:\"任务\",id:\"Ajmo+3Cu3b\""
+  ],
+  [
+    "defaultMessage:\"Untitled task\",id:\"RuyWs2JrH9\"",
+    "defaultMessage:\"未命名任务\",id:\"RuyWs2JrH9\""
+  ],
+  [
+    "e.title??\"Local task\"",
+    "e.title??\"本地任务\""
+  ],
+  [
+    "e.title??\"Untitled Session\"",
+    "e.title??\"未命名会话\""
+  ],
+  [
+    "e4e={cloud:\"Cloud\",bridge:\"Remote Control\",routine:\"Routine\"}",
+    "e4e={cloud:\"云端\",bridge:\"远程控制\",routine:\"例程\"}"
+  ],
+  [
+    "fr=\"Remote Control\"",
+    "fr=\"远程控制\""
+  ],
+  [
+    "hint:\"Full URL of the inference gateway endpoint.\"",
+    "hint:\"推理网关端点的完整 URL。\""
+  ],
+  [
+    "hint:\"How the gateway credential is sent. Choose Bearer or x-api-key for a static key or credential-helper output; choose SSO to have each user sign in via your identity provider.\"",
+    "hint:\"网关凭据的发送方式。静态密钥或凭据辅助脚本输出请选择 Bearer 或 x-api-key；如需每位用户通过你的身份提供商登录，请选择 SSO。\""
+  ],
+  [
+    "hint:\"Org-pushed MCP servers — remote (HTTP/SSE) or local (stdio command). May embed bearer tokens.\"",
+    "hint:\"组织推送的 MCP 服务器：远程（HTTP/SSE）或本地（stdio 命令）。可能嵌入 Bearer 令牌。\""
+  ],
+  [
+    "ht=e=>0===e?\"All\"",
+    "ht=e=>0===e?\"全部\""
+  ],
+  [
+    "label:\"Daily brief\"",
+    "label:\"每日简报\""
+  ],
+  [
+    "label:\"Display name\"",
+    "label:\"显示名称\""
+  ],
+  [
+    "label:\"Environment\"",
+    "label:\"环境\""
+  ],
+  [
+    "label:\"Group by\"",
+    "label:\"分组方式\""
+  ],
+  [
+    "label:\"Last activity\"",
+    "label:\"最近活动\""
+  ],
+  [
+    "label:\"Project\"",
+    "label:\"项目\""
+  ],
+  [
+    "label:\"Projects\"",
+    "label:\"项目\""
+  ],
+  [
+    "label:\"Sort by\"",
+    "label:\"排序依据\""
+  ],
+  [
+    "label:\"Status\"",
+    "label:\"状态\""
+  ],
+  [
+    "label:\"Weekly review\"",
+    "label:\"每周回顾\""
+  ],
+  [
+    "label:x.formatMessage({defaultMessage:\"Name\",id:\"HAlOn1ZsuY\"}),value:V,onChange",
+    "label:\"任务名称\",value:V,onChange"
+  ],
+  [
+    "mr=\"All\"",
+    "mr=\"全部\""
+  ],
+  [
+    "name:{defaultMessage:\"Name\",id:\"HAlOn1ZsuY\"},namePlaceholder:{defaultMessage:\"daily-code-review\"",
+    "name:{defaultMessage:\"任务名称\",id:\"scheduledTaskName\"},namePlaceholder:{defaultMessage:\"daily-code-review\""
+  ],
+  [
+    "name:{defaultMessage:\"Name\",id:\"HAlOn1ZsuY\"},namePlaceholder:{defaultMessage:\"e.g., Daily code review\"",
+    "name:{defaultMessage:\"任务名称\",id:\"scheduledTaskName\"},namePlaceholder:{defaultMessage:\"例如：每日代码审查\""
+  ],
+  [
+    "nextRun:\"Next run\",name:\"Name\"",
+    "nextRun:\"下次执行\",name:\"任务名称\""
+  ],
+  [
+    "placeholder:\"Filter scheduled tasks\"",
+    "placeholder:\"筛选计划任务\""
+  ],
+  [
+    "placeholder:\"Search projects\"",
+    "placeholder:\"搜索项目\""
+  ],
+  [
+    "placeholder:\"Search projects...\"",
+    "placeholder:\"搜索项目\""
+  ],
+  [
+    "placeholder:\"Search projects…\"",
+    "placeholder:\"搜索项目\""
+  ],
+  [
+    "pr=\"Cloud\"",
+    "pr=\"云端\""
+  ],
+  [
+    "reason:\"Crash and error reports are how we diagnose failures specific to your inference setup. Support turnaround will be slower without them.\"",
+    "reason:\"崩溃和错误报告用于诊断你的推理配置中特定的故障。没有这些报告，支持处理会更慢。\""
+  ],
+  [
+    "recent:\"Recent\"",
+    "recent:\"最近\""
+  ],
+  [
+    "sHt={nextRun:\"Next run\",name:\"Name\"}",
+    "sHt={nextRun:\"下次执行\",name:\"任务名称\"}"
+  ],
+  [
+    "sessionTitle:t.title??\"Local task\"",
+    "sessionTitle:t.title??\"本地任务\""
+  ],
+  [
+    "t?\"Completed\":\"Paused\"",
+    "t?\"已完成\":\"已暂停\""
+  ],
+  [
+    "title:\"Allow desktop extensions\"",
+    "title:\"允许桌面扩展\""
+  ],
+  [
+    "title:\"Allowed egress hosts\"",
+    "title:\"允许的出站主机\""
+  ],
+  [
+    "title:\"Allowed workspace folders\"",
+    "title:\"允许的工作区文件夹\""
+  ],
+  [
+    "title:\"Appearance\"",
+    "title:\"外观\""
+  ],
+  [
+    "title:\"Built-in tool policy\"",
+    "title:\"内置工具策略\""
+  ],
+  [
+    "title:\"Connection\"",
+    "title:\"连接\""
+  ],
+  [
+    "title:\"Connectors & extensions\"",
+    "title:\"连接器与扩展\""
+  ],
+  [
+    "title:\"Custom inference headers\"",
+    "title:\"自定义推理请求头\""
+  ],
+  [
+    "title:\"Disable Claude.ai sign-in\"",
+    "title:\"禁用 Claude.ai 登录\""
+  ],
+  [
+    "title:\"Disable claude:// deep-link handling\"",
+    "title:\"禁用 claude:// 深度链接处理\""
+  ],
+  [
+    "title:\"Disabled built-in tools\"",
+    "title:\"禁用内置工具\""
+  ],
+  [
+    "title:\"Egress Requirements\"",
+    "title:\"出站要求\""
+  ],
+  [
+    "title:\"Gateway API key\"",
+    "title:\"网关 API 密钥\""
+  ],
+  [
+    "title:\"Gateway auth scheme\"",
+    "title:\"网关认证方案\""
+  ],
+  [
+    "title:\"Gateway base URL\"",
+    "title:\"网关基础 URL\""
+  ],
+  [
+    "title:\"Helper script\"",
+    "title:\"辅助脚本\""
+  ],
+  [
+    "title:\"Max tokens per window\"",
+    "title:\"每窗口最大令牌数\""
+  ],
+  [
+    "title:\"Model discovery\"",
+    "title:\"模型发现\""
+  ],
+  [
+    "title:\"Model list\"",
+    "title:\"模型列表\""
+  ],
+  [
+    "title:\"Organization UUID\"",
+    "title:\"组织 UUID\""
+  ],
+  [
+    "title:\"Plugins & skills\"",
+    "title:\"插件与技能\""
+  ],
+  [
+    "title:\"Projects\"",
+    "title:\"项目\""
+  ],
+  [
+    "title:\"Tasks\",noun:\"task\",nouns:\"tasks\",searchPlaceholder:\"Filter tasks\",noResults:\"No tasks match your search.\",emptyByTab:{recents:\"No tasks yet.\",shared:\"You haven't shared any tasks yet.\"}",
+    "title:\"任务\",noun:\"任务\",nouns:\"任务\",searchPlaceholder:\"筛选任务\",noResults:\"没有匹配的任务。\",emptyByTab:{recents:\"还没有任务。\",shared:\"你还没有共享任何任务。\"}"
+  ],
+  [
+    "title:\"Telemetry & updates\"",
+    "title:\"诊断与更新\""
+  ],
+  [
+    "title:\"Usage limits\"",
+    "title:\"使用限制\""
+  ],
+  [
+    "title:\"Workspace restrictions\"",
+    "title:\"工作区限制\""
+  ],
+  [
+    "ur=\"Local\"",
+    "ur=\"本地\""
+  ],
+  [
+    "us=e=>0===e?\"All\"",
+    "us=e=>0===e?\"全部\""
+  ],
+  [
+    "value:a?s.keyLabel(a):\"All\"",
+    "value:a?s.keyLabel(a):\"全部\""
+  ],
+  [
+    "vi={local:\"Local\",remote:\"Cloud\",bridge:\"Remote Control\"}",
+    "vi={local:\"本地\",remote:\"云端\",bridge:\"远程控制\"}"
+  ],
+  [
+    "xYt={nextRun:\"Next run\",name:\"Name\"}",
+    "xYt={nextRun:\"下次执行\",name:\"任务名称\"}"
+  ],
+  [
+    "zHt={nextRun:\"Next run\",name:\"Name\"}",
+    "zHt={nextRun:\"下次执行\",name:\"任务名称\"}"
+  ],
+  [
+    "zJt={all:\"All\",active:\"Active\",archived:\"Archived\"}",
+    "zJt={all:\"全部\",active:\"活跃\",archived:\"已归档\"}"
+  ]
 ]
