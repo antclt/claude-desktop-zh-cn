@@ -602,5 +602,89 @@
   [
     "zJt={all:\"All\",active:\"Active\",archived:\"Archived\"}",
     "zJt={all:\"全部\",active:\"活躍\",archived:\"已封存\"}"
+  ],
+  [
+    "label:\"Scheduled\"",
+    "label:\"排程任務\""
+  ],
+  [
+    "label:\"Customize\"",
+    "label:\"自訂\""
+  ],
+  [
+    "title:\"Scheduled tasks\"",
+    "title:\"排程任務\""
+  ],
+  [
+    "children:\"Run tasks on a schedule or whenever you need them. Type /schedule in any existing task to set one up.\"",
+    "children:\"按排程或在需要時執行任務。在任何現有任務中輸入 /schedule 即可設定。\""
+  ],
+  [
+    "label:\"Create with Claude\"",
+    "label:\"用 Claude 建立\""
+  ],
+  [
+    "label:\"Set up manually\"",
+    "label:\"手動設定\""
+  ],
+  [
+    "[\"alpha\",\"Alphabetically\"]",
+    "[\"alpha\",\"按字母順序\"]"
+  ],
+  [
+    "[\"created\",\"Created time\"]",
+    "[\"created\",\"建立時間\"]"
+  ],
+  [
+    "[\"recency\",\"Recency\"]",
+    "[\"recency\",\"最近使用\"]"
+  ],
+  [
+    "\"Collapse sidebar\"",
+    "\"收合側邊欄\""
+  ],
+  [
+    "\"Expand sidebar\"",
+    "\"展開側邊欄\""
+  ],
+  [
+    "title:\"New scheduled task\"",
+    "title:\"新增排程任務\""
+  ],
+  [
+    "T=P.length>0?`Usage: ${P.join(\", \")}`:\"Usage\";",
+    "T=P.length>0?`使用情況：${P.join(\", \")}`:\"使用情況\";"
+  ],
+  [
+    "\"aria-label\":\"Usage\"",
+    "\"aria-label\":\"使用情況\""
+  ],
+  [
+    "children:\"Filter\"",
+    "children:\"篩選\""
+  ],
+  [
+    "children:\"Reset\"",
+    "children:\"重設\""
+  ],
+  [
+    "\"aria-label\":I?\"Filter (active)\":\"Filter\"",
+    "\"aria-label\":I?\"篩選（使用中）\":\"篩選\""
+  ],
+  [
+    "F1t={recents:\"最近使用\",shared:\"Shared\"}",
+    "F1t={recents:\"最近使用\",shared:\"已共享\"}"
+  ],
+  [
+    "B1t={all:\"All\",active:\"Active\",archived:\"Archived\"}",
+    "B1t={all:\"全部\",active:\"活躍\",archived:\"已封存\"}"
+  ],
+  [
+    "$1t={all:\"No tasks yet.\",active:\"No active tasks.\",archived:\"No archived tasks.\"}",
+    "$1t={all:\"還沒有任務。\",active:\"沒有活躍任務。\",archived:\"沒有已封存任務。\"}"
+  ],
+  [
+    "children:\"Active\"}),renderRow",
+    "children:\"活躍\"}),renderRow"
   ]
 ]

@@ -602,5 +602,89 @@
   [
     "zJt={all:\"All\",active:\"Active\",archived:\"Archived\"}",
     "zJt={all:\"全部\",active:\"活跃\",archived:\"已归档\"}"
+  ],
+  [
+    "label:\"Scheduled\"",
+    "label:\"计划任务\""
+  ],
+  [
+    "label:\"Customize\"",
+    "label:\"自定义\""
+  ],
+  [
+    "title:\"Scheduled tasks\"",
+    "title:\"计划任务\""
+  ],
+  [
+    "children:\"Run tasks on a schedule or whenever you need them. Type /schedule in any existing task to set one up.\"",
+    "children:\"按计划或在需要时运行任务。在任何现有任务中输入 /schedule 即可设置。\""
+  ],
+  [
+    "label:\"Create with Claude\"",
+    "label:\"用 Claude 创建\""
+  ],
+  [
+    "label:\"Set up manually\"",
+    "label:\"手动设置\""
+  ],
+  [
+    "[\"alpha\",\"Alphabetically\"]",
+    "[\"alpha\",\"按字母顺序\"]"
+  ],
+  [
+    "[\"created\",\"Created time\"]",
+    "[\"created\",\"创建时间\"]"
+  ],
+  [
+    "[\"recency\",\"Recency\"]",
+    "[\"recency\",\"最近使用\"]"
+  ],
+  [
+    "\"Collapse sidebar\"",
+    "\"折叠侧边栏\""
+  ],
+  [
+    "\"Expand sidebar\"",
+    "\"展开侧边栏\""
+  ],
+  [
+    "title:\"New scheduled task\"",
+    "title:\"新建计划任务\""
+  ],
+  [
+    "T=P.length>0?`Usage: ${P.join(\", \")}`:\"Usage\";",
+    "T=P.length>0?`使用情况：${P.join(\", \")}`:\"使用情况\";"
+  ],
+  [
+    "\"aria-label\":\"Usage\"",
+    "\"aria-label\":\"使用情况\""
+  ],
+  [
+    "children:\"Filter\"",
+    "children:\"筛选\""
+  ],
+  [
+    "children:\"Reset\"",
+    "children:\"重置\""
+  ],
+  [
+    "\"aria-label\":I?\"Filter (active)\":\"Filter\"",
+    "\"aria-label\":I?\"筛选（已启用）\":\"筛选\""
+  ],
+  [
+    "F1t={recents:\"最近使用\",shared:\"Shared\"}",
+    "F1t={recents:\"最近使用\",shared:\"共享\"}"
+  ],
+  [
+    "B1t={all:\"All\",active:\"Active\",archived:\"Archived\"}",
+    "B1t={all:\"全部\",active:\"活跃\",archived:\"已归档\"}"
+  ],
+  [
+    "$1t={all:\"No tasks yet.\",active:\"No active tasks.\",archived:\"No archived tasks.\"}",
+    "$1t={all:\"还没有任务。\",active:\"没有活跃任务。\",archived:\"没有已归档任务。\"}"
+  ],
+  [
+    "children:\"Active\"}),renderRow",
+    "children:\"活跃\"}),renderRow"
   ]
 ]
