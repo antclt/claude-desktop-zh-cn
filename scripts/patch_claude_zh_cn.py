@@ -290,6 +290,13 @@ def calculate_file_integrity(data: bytes) -> dict[str, Any]:
     }
 
 
+def _custom3p_validation_removed(content: bytes) -> bool:
+    return (
+        b"expected a gateway model route referencing an Anthropic model" not in content
+        and b"Bedrock model" not in content
+    )
+
+
 def find_custom3p_validation_toggle(content: bytes, expr: bytes) -> re.Match[bytes] | None:
     pattern = re.compile(
         rb"const ([A-Za-z_$][A-Za-z0-9_$]*)="
@@ -401,6 +408,9 @@ def patch_custom3p_model_validation(app: Path) -> None:
             return
         patched_content = patch_custom3p_name_validator(content)
         if patched_content is None:
+            if _custom3p_validation_removed(content):
+                print("Custom 3P model-name validation not present (removed in this Claude version)")
+                return
             raise SystemExit(
                 "Could not patch custom 3P model validation. Claude bundle format may have changed."
             )

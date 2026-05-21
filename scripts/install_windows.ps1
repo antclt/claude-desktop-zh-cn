@@ -530,6 +530,19 @@ function Find-Custom3PValidationToggle {
     return $null
 }
 
+function Test-Custom3PValidationRemoved {
+    param([byte[]]$Content)
+
+    $contentText = [System.Text.Encoding]::ASCII.GetString($Content)
+    if (
+        (-not $contentText.Contains('expected a gateway model route referencing an Anthropic model')) -and
+        (-not $contentText.Contains('Bedrock model'))
+    ) {
+        return $true
+    }
+    return $false
+}
+
 function Find-Custom3PNameValidator {
     param(
         [byte[]]$Content,
@@ -884,6 +897,10 @@ function Patch-Custom3PModelValidation {
             return
         }
         if (-not (Patch-Custom3PNameValidator $content)) {
+            if (Test-Custom3PValidationRemoved $content) {
+                Write-Host "  custom 3P model-name validation not present (removed in this Claude version)" -ForegroundColor Green
+                return
+            }
             throw "Could not patch custom 3P model validation. Claude bundle format may have changed."
         }
     }
