@@ -1,6 +1,6 @@
 # Claude Desktop 中文补丁
 
-一个用于 Claude Desktop 的中文界面补丁，支持简体中文、繁体中文（中国台湾）和繁体中文（中国香港）。
+一个用于 Claude Desktop 的中文界面汉化补丁，支持简体中文、繁体中文（中国台湾）和繁体中文（中国香港）。
 
 macOS 可双击 `install-mac.command`，Windows 可右键管理员运行 `install-windows.bat`，给 Claude Desktop 添加中文语言选项，并安装中文界面资源。
 
