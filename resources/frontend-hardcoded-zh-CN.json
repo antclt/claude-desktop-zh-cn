@@ -60,6 +60,10 @@
     "\"链接 URL\""
   ],
   [
+    "label:\"Live artifacts\"",
+    "label:\"实时Artifacts\""
+  ],
+  [
     "\"New chat\"",
     "\"新建聊天\""
   ],
