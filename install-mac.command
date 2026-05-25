@@ -9,6 +9,49 @@ if [ ! -x "$PYTHON" ]; then
   PYTHON="$(command -v python3)"
 fi
 
+check_release_update() {
+  if [ "${CLAUDE_ZH_SKIP_UPDATE_CHECK:-0}" = "1" ]; then
+    return
+  fi
+
+  "$PYTHON" - "$DIR/resources/release.json" 2>/dev/null <<'PY'
+import json
+import re
+import sys
+import urllib.request
+
+metadata_path = sys.argv[1]
+try:
+    with open(metadata_path, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+    repo = metadata["repo"]
+    current = str(metadata["release"])
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/releases/latest",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "claude-desktop-zh-cn-update-check",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=3) as response:
+        latest = str(json.load(response)["tag_name"])
+
+    def version_key(value):
+        parts = [int(part) for part in re.findall(r"\d+", value)]
+        return parts + [0] * (3 - len(parts))
+
+    if version_key(latest) > version_key(current):
+        print(
+            f"检测到 GitHub Releases 已发布新版 {latest}，当前脚本包为 {current}。"
+            "建议及时更新。本次操作会继续执行。"
+        )
+except Exception:
+    pass
+PY
+}
+
+check_release_update
+
 echo "Claude Desktop 中文补丁"
 echo "目录: $DIR"
 echo

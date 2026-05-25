@@ -22,11 +22,68 @@ $script:CurrentBackupSetPath = $null
 $script:DetectedUnpackagedClaudePaths = @()
 $script:DetectedMultipleClaudeInstalls = $false
 
+function Compare-ReleaseVersion {
+    param(
+        [string]$Left,
+        [string]$Right
+    )
+
+    $leftParts = @([regex]::Matches($Left, '\d+') | ForEach-Object { [int]$_.Value })
+    $rightParts = @([regex]::Matches($Right, '\d+') | ForEach-Object { [int]$_.Value })
+    $count = [Math]::Max($leftParts.Count, $rightParts.Count)
+    for ($i = 0; $i -lt $count; $i++) {
+        $leftPart = if ($i -lt $leftParts.Count) { $leftParts[$i] } else { 0 }
+        $rightPart = if ($i -lt $rightParts.Count) { $rightParts[$i] } else { 0 }
+        if ($leftPart -gt $rightPart) { return 1 }
+        if ($leftPart -lt $rightPart) { return -1 }
+    }
+    return 0
+}
+
+function Test-SkipReleaseUpdateCheck {
+    $value = $env:CLAUDE_ZH_SKIP_UPDATE_CHECK
+    return $value -match '^(1|true|TRUE|yes|YES|y|Y)$'
+}
+
+function Test-GitHubReleaseUpdate {
+    if (Test-SkipReleaseUpdateCheck) {
+        return
+    }
+
+    try {
+        $scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+        $projectDir = Split-Path -Parent $scriptDir
+        $metadataPath = Join-Path $projectDir "resources\release.json"
+        $metadata = Get-Content $metadataPath -Raw -ErrorAction Stop | ConvertFrom-Json
+        $repo = [string]$metadata.repo
+        $current = [string]$metadata.release
+        if (-not $repo -or -not $current) {
+            return
+        }
+
+        $latestRelease = Invoke-RestMethod `
+            -Uri "https://api.github.com/repos/$repo/releases/latest" `
+            -Headers @{ Accept = "application/vnd.github+json"; "User-Agent" = "claude-desktop-zh-cn-update-check" } `
+            -TimeoutSec 3 `
+            -ErrorAction Stop
+        $latest = [string]$latestRelease.tag_name
+        if ($latest -and ((Compare-ReleaseVersion $latest $current) -gt 0)) {
+            Write-Host "检测到 GitHub Releases 已发布新版 $latest，当前脚本包为 $current。建议及时更新。本次操作会继续执行。" -ForegroundColor Yellow
+            Write-Host ""
+        }
+    }
+    catch {
+        return
+    }
+}
+
+Test-GitHubReleaseUpdate
+
 function Read-InteractiveSelection {
     Write-Host "=== Claude Desktop Windows 中文补丁 ==="
     Write-Host ""
-    Write-Host "[1] 安装中文补丁(安全模式，跳过 app.asar 补丁,使用第三方模型需要搭配ccswitch使用)"
-    Write-Host "[2] 安装中文补丁(会显示无法启动Claude的工作区)"
+    Write-Host "[1] 安装中文补丁(Cowork 兼容模式，跳过 app.asar 补丁；第三方模型请用网关/ccswitch 别名映射)"
+    Write-Host "[2] 安装中文补丁(实验模式：修改 app.asar，支持任意 3P 模型名；会破坏 Claude.exe 签名，Cowork/截图工作区可能不可用)"
     Write-Host "[3] 恢复原样 / 卸载补丁"
     Write-Host "[Q] 退出"
     Write-Host ""
@@ -107,27 +164,30 @@ function Get-UnpackagedClaudePaths {
         ForEach-Object { $_.FullName })
 }
 
-function Write-MultipleClaudeInstallWarning {
+function Write-AppxForkNotice {
     param(
-        [string]$ClaudePath,
-        [string]$ResourcesPath,
-        [string[]]$IgnoredPaths
+        [string]$SourcePath,
+        [string]$ForkPath
     )
 
-    Write-Host "  [警告] 检测到多个 Claude Desktop 安装。" -ForegroundColor Yellow
-    Write-Host "  本脚本只会汉化 WindowsApps/AppX 版本: $ClaudePath" -ForegroundColor Yellow
-    Write-Host "  resources: $ResourcesPath" -ForegroundColor Yellow
-    foreach ($ignoredPath in $IgnoredPaths) {
-        Write-Host "  已忽略: $ignoredPath" -ForegroundColor Yellow
-    }
-    Write-Host "  如果失败，请卸载另一个 Claude Desktop 版本后重试。" -ForegroundColor Yellow
+    Write-Host "  [提示] 检测到 WindowsApps/AppX 版本。" -ForegroundColor Yellow
+    Write-Host "  [提示] 为避免破坏 Windows 包完整性，将复制 app 目录后修改本地副本。" -ForegroundColor Yellow
+    Write-Host "  source: $SourcePath" -ForegroundColor DarkYellow
+    Write-Host "  fork: $ForkPath" -ForegroundColor DarkYellow
 }
 
 function Write-MultipleClaudeFailureHint {
     Write-Host ""
-    Write-Host "[提示] 检测到多个 Claude Desktop 版本，本脚本只汉化 WindowsApps/AppX 版本。" -ForegroundColor Yellow
-    Write-Host "[提示] 请卸载另一个版本后重试。" -ForegroundColor Yellow
-    Write-Host "[提示] 请及时到 Claude 官网升级最新版 Claude Desktop。" -ForegroundColor Yellow
+    Write-Host "[提示] 检测到多个 %LocalAppData%\AnthropicClaude\app-* 版本，本脚本已选择最新版本。" -ForegroundColor Yellow
+    Write-Host "[提示] 如果失败，请卸载旧版本或手动清理旧 app-* 目录后重试。" -ForegroundColor Yellow
+}
+
+function Write-AsarCoworkSignatureWarning {
+    Write-Host ""
+    Write-Host "[重要] 当前选择会修改 app.asar，并同步改写 Claude.exe 内嵌的 asar 完整性哈希。" -ForegroundColor Yellow
+    Write-Host "[重要] 这会让 Claude.exe 的 Authenticode 签名变为 HashMismatch；Cowork VM 服务会拒绝未通过签名验证的客户端。" -ForegroundColor Yellow
+    Write-Host "[重要] 如果需要 Cowork/截图工作区，请改用模式 2，并在第三方网关或 ccswitch 中把 claude/anthropic 风格模型名映射到实际模型。" -ForegroundColor Yellow
+    Write-Host ""
 }
 
 function Find-ClaudePath {
@@ -148,21 +208,146 @@ function Find-ClaudePath {
     return $null
 }
 
+function Copy-AppxClaudeToPatchableLocation {
+    param([string]$PackagePath)
+
+    if (-not $env:LOCALAPPDATA) {
+        throw "LOCALAPPDATA 未设置，无法创建 Claude 本地补丁副本。"
+    }
+
+    $sourceApp = Join-Path $PackagePath "app"
+    if (-not (Test-Path $sourceApp)) {
+        throw "未找到 AppX Claude app 目录: $sourceApp"
+    }
+
+    $packageName = Split-Path -Leaf $PackagePath
+    $forkRoot = Join-Path $env:LOCALAPPDATA (Join-Path "ClaudeDesktopZhCn\appx-fork" $packageName)
+    Write-AppxForkNotice $sourceApp $forkRoot
+
+    if (Test-Path $forkRoot) {
+        Remove-Item $forkRoot -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $forkRoot -Force | Out-Null
+    Get-ChildItem $sourceApp -Force | Copy-Item -Destination $forkRoot -Recurse -Force
+
+    return $forkRoot
+}
+
+function Remove-AppxClaudeForks {
+    if (-not $env:LOCALAPPDATA) {
+        return
+    }
+
+    $forkBase = Join-Path $env:LOCALAPPDATA "ClaudeDesktopZhCn\appx-fork"
+    if (Test-Path $forkBase) {
+        Remove-Item $forkBase -Recurse -Force
+        Write-Host "  removed AppX local fork: $forkBase" -ForegroundColor Green
+    }
+}
+
+function Get-ClaudeExePath {
+    param([string]$ClaudePath)
+
+    $exeCandidates = @(
+        (Join-Path $ClaudePath "Claude.exe"),
+        (Join-Path $ClaudePath "claude.exe"),
+        (Join-Path $ClaudePath "app\Claude.exe"),
+        (Join-Path $ClaudePath "app\claude.exe")
+    )
+    foreach ($exe in $exeCandidates) {
+        if (Test-Path $exe) {
+            return $exe
+        }
+    }
+    return $null
+}
+
+function New-ClaudeForkShortcuts {
+    param([string]$ClaudePath)
+
+    $exe = Get-ClaudeExePath $ClaudePath
+    if (-not $exe) {
+        Write-Host "  [警告] 未找到 Claude.exe，跳过创建快捷方式。" -ForegroundColor DarkYellow
+        return
+    }
+
+    $shortcutTargets = @()
+    $desktop = [Environment]::GetFolderPath("Desktop")
+    if ($desktop) {
+        $shortcutTargets += Join-Path $desktop "Claude Desktop 中文补丁.lnk"
+    }
+    $programs = [Environment]::GetFolderPath("Programs")
+    if ($programs) {
+        $shortcutTargets += Join-Path $programs "Claude Desktop 中文补丁.lnk"
+    }
+
+    $shell = New-Object -ComObject WScript.Shell
+    foreach ($shortcutPath in $shortcutTargets) {
+        $parent = Split-Path -Parent $shortcutPath
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        $shortcut = $shell.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = $exe
+        $shortcut.WorkingDirectory = $ClaudePath
+        $shortcut.IconLocation = $exe
+        $shortcut.Description = "Claude Desktop 中文补丁本地副本"
+        $shortcut.Save()
+        Write-Host "  shortcut: $shortcutPath" -ForegroundColor Green
+    }
+}
+
+function Remove-ClaudeForkShortcuts {
+    $shortcutTargets = @()
+    $desktop = [Environment]::GetFolderPath("Desktop")
+    if ($desktop) {
+        $shortcutTargets += Join-Path $desktop "Claude Desktop 中文补丁.lnk"
+    }
+    $programs = [Environment]::GetFolderPath("Programs")
+    if ($programs) {
+        $shortcutTargets += Join-Path $programs "Claude Desktop 中文补丁.lnk"
+    }
+
+    foreach ($shortcutPath in $shortcutTargets) {
+        Remove-Item $shortcutPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Get-ClaudeResourcesPath {
     $script:DetectedUnpackagedClaudePaths = @(Get-UnpackagedClaudePaths)
     $script:DetectedMultipleClaudeInstalls = $false
 
+    if ($script:DetectedUnpackagedClaudePaths.Count -gt 0) {
+        $claudePath = $script:DetectedUnpackagedClaudePaths[0]
+        $resourcesPath = Join-Path $claudePath "resources"
+        if (-not (Test-Path $resourcesPath)) {
+            throw "未找到 Claude resources 目录: $resourcesPath"
+        }
+        if ($script:DetectedUnpackagedClaudePaths.Count -gt 1) {
+            $script:DetectedMultipleClaudeInstalls = $true
+            Write-Host "  [警告] 检测到多个 %LocalAppData%\AnthropicClaude\app-*，将使用最新版本: $claudePath" -ForegroundColor Yellow
+        }
+        return @{
+            App = $claudePath
+            Resources = $resourcesPath
+            InstallKind = "Unpackaged"
+        }
+    }
+
     $claudePath = Find-ClaudePath
     if (-not $claudePath) {
-        if ($script:DetectedUnpackagedClaudePaths.Count -gt 0) {
-            $detectedPaths = $script:DetectedUnpackagedClaudePaths -join "; "
-            throw "当前脚本不支持此安装路径 %LocalAppData%\AnthropicClaude\app-*。检测到: $detectedPaths。请到 Claude 官网升级/安装最新版 Claude Desktop 后重试。"
-        }
         throw "未找到 Claude Desktop 安装。"
     }
 
-    if ($script:DetectedUnpackagedClaudePaths.Count -gt 0) {
-        $script:DetectedMultipleClaudeInstalls = $true
+    if (-not $SkipAsarPatch) {
+        $claudePath = Copy-AppxClaudeToPatchableLocation $claudePath
+        $resourcesPath = Join-Path $claudePath "resources"
+        if (-not (Test-Path $resourcesPath)) {
+            throw "未找到 Claude resources 目录: $resourcesPath"
+        }
+        return @{
+            App = $claudePath
+            Resources = $resourcesPath
+            InstallKind = "AppXFork"
+        }
     }
 
     $resourcesPath = Join-Path $claudePath "app\resources"
@@ -170,19 +355,22 @@ function Get-ClaudeResourcesPath {
         throw "未找到 Claude resources 目录: $resourcesPath"
     }
 
-    if ($script:DetectedMultipleClaudeInstalls) {
-        Write-MultipleClaudeInstallWarning $claudePath $resourcesPath $script:DetectedUnpackagedClaudePaths
-    }
-
     return @{
         App = $claudePath
         Resources = $resourcesPath
+        InstallKind = "AppX"
     }
 }
 
 function Get-ClaudeConfigPaths {
     if (-not $env:LOCALAPPDATA) {
         return @()
+    }
+
+    $configPaths = @()
+    if ($env:APPDATA) {
+        $configPaths += Join-Path $env:APPDATA "Claude\config.json"
+        $configPaths += Join-Path $env:APPDATA "Claude-3p\config.json"
     }
 
     $packageNames = @()
@@ -202,7 +390,6 @@ function Get-ClaudeConfigPaths {
         }
     }
 
-    $configPaths = @()
     foreach ($packageName in @($packageNames | Select-Object -Unique)) {
         $packagePath = Join-Path (Join-Path $env:LOCALAPPDATA "Packages") $packageName
         $configPaths += Join-Path $packagePath "LocalCache\Roaming\Claude\config.json"
@@ -1009,6 +1196,62 @@ function Patch-Custom3PModelValidation {
     Write-Host "  patched custom 3P model-name validation in app.asar" -ForegroundColor Green
 }
 
+function Patch-CoworkModernInstallerCheck {
+    param([string]$ResourcesPath)
+
+    $asarPath = Join-Path $ResourcesPath "app.asar"
+    Require-File $asarPath
+
+    $data = [System.IO.File]::ReadAllBytes($asarPath)
+    $parsed = Read-AsarHeader $data $asarPath
+    $headerSize = $parsed["HeaderSize"]
+    $header = $parsed["Header"]
+    $entry = Get-AsarFileEntry $header $AsarPatchTarget
+
+    $contentOffset = [int64](8 + $headerSize + [int64]$entry.offset)
+    $contentSize = [int64]$entry.size
+    $contentEnd = $contentOffset + $contentSize
+    if (($contentOffset -lt 0) -or ($contentEnd -gt $data.Length)) {
+        throw "Unsupported app.asar file bounds for $AsarPatchTarget."
+    }
+
+    $content = [byte[]]::new([int]$contentSize)
+    [System.Array]::Copy($data, [int]$contentOffset, $content, 0, [int]$contentSize)
+    $contentText = [System.Text.Encoding]::ASCII.GetString($content)
+
+    if ($contentText.Contains('function _I(){return mo?(XX="patched",sP=!0,!0):!1}')) {
+        Write-Host "  Cowork modern installer check already patched" -ForegroundColor Green
+        Sync-ClaudeExeAsarIntegrity $ResourcesPath
+        return
+    }
+
+    $source = 'function _I(){return mo?sP!==void 0?sP:process.windowsStore?(XX="windowsStore",sP=!0,!0):uVe()?(XX="appPath",sP=!0,!0):(XX=null,sP=!1,!1):!1}'
+    $sourceIndex = $contentText.IndexOf($source, [System.StringComparison]::Ordinal)
+    if ($sourceIndex -lt 0 -or $contentText.IndexOf($source, $sourceIndex + $source.Length, [System.StringComparison]::Ordinal) -ge 0) {
+        throw "Could not patch Cowork modern installer check. Claude bundle format may have changed."
+    }
+    $target = 'function _I(){return mo?(XX="patched",sP=!0,!0):!1}'
+    if ($target.Length -gt $source.Length) {
+        throw "Internal patch error: Cowork installer check replacement is longer than source."
+    }
+    $target = $target.PadRight($source.Length, " ")
+
+    $replacement = [System.Text.Encoding]::ASCII.GetBytes($target)
+    [System.Array]::Copy($replacement, 0, $content, $sourceIndex, $replacement.Length)
+
+    Backup-ModifiedFile $ResourcesPath $asarPath
+    [System.Array]::Copy($content, 0, $data, [int]$contentOffset, $content.Length)
+
+    $entry.integrity = Get-AsarFileIntegrity $content
+    $updatedHeaderString = $header | ConvertTo-Json -Compress -Depth 100
+    $updatedHeader = Encode-AsarHeader $updatedHeaderString $headerSize
+    [System.Array]::Copy($updatedHeader, 0, $data, 0, $updatedHeader.Length)
+
+    [System.IO.File]::WriteAllBytes($asarPath, $data)
+    Sync-ClaudeExeAsarIntegrity $ResourcesPath
+    Write-Host "  patched Cowork modern installer check in app.asar" -ForegroundColor Green
+}
+
 function Patch-HardcodedMainProcessMenuLabels {
     param(
         [string]$ResourcesPath,
@@ -1212,16 +1455,11 @@ function Restart-Claude {
 
     Stop-ClaudeProcesses
 
-    $exeCandidates = @(
-        (Join-Path $ClaudePath "app\Claude.exe"),
-        (Join-Path $ClaudePath "app\claude.exe")
-    )
-    foreach ($exe in $exeCandidates) {
-        if (Test-Path $exe) {
-            Start-Process $exe
-            Write-Host "  restarted Claude Desktop" -ForegroundColor Green
-            return
-        }
+    $exe = Get-ClaudeExePath $ClaudePath
+    if ($exe) {
+        Start-Process $exe
+        Write-Host "  restarted Claude Desktop" -ForegroundColor Green
+        return
     }
 
     Write-Host "  [警告] 未找到 Claude.exe，请手动启动 Claude Desktop。" -ForegroundColor DarkYellow
@@ -1240,15 +1478,16 @@ function Install-WindowsLanguagePack {
         Write-Step "[2/9] 检查语言资源"
         $pack = Get-LanguageResources $LanguageCode
 
+        Write-Step "关闭 Claude Desktop"
+        Stop-ClaudeProcesses
+
         Write-Step "[3/9] 查找 Claude Desktop"
         $paths = Get-ClaudeResourcesPath
         $claudePath = $paths["App"]
         $resourcesPath = $paths["Resources"]
+        $installKind = $paths["InstallKind"]
         Write-Host "  app: $claudePath" -ForegroundColor Green
         Write-Host "  resources: $resourcesPath" -ForegroundColor Green
-
-        Write-Step "关闭 Claude Desktop"
-        Stop-ClaudeProcesses
 
         Write-Step "[4/9] 准备写入权限"
         Enable-WriteAccess $resourcesPath
@@ -1272,7 +1511,9 @@ function Install-WindowsLanguagePack {
         if ($SkipAsarPatch) {
             Write-Host "  skipping 3P model validation patch (app.asar) due to -SkipAsarPatch" -ForegroundColor DarkYellow
         } else {
+            Write-AsarCoworkSignatureWarning
             Patch-Custom3PModelValidation $resourcesPath
+            Patch-CoworkModernInstallerCheck $resourcesPath
         }
 
         if ($SkipAsarPatch) {
@@ -1281,6 +1522,9 @@ function Install-WindowsLanguagePack {
 
         Write-Step "[9/9] 写入用户语言配置"
         Set-ClaudeLocale $LanguageCode
+        if ($installKind -eq "AppXFork") {
+            New-ClaudeForkShortcuts $claudePath
+        }
 
         Write-Step "重启 Claude Desktop"
         Restart-Claude $claudePath
@@ -1299,7 +1543,14 @@ function Install-WindowsLanguagePack {
 function Uninstall-WindowsLanguagePack {
     Write-Host "=== Claude Desktop Windows 中文补丁卸载 ===" -ForegroundColor Cyan
 
-    $paths = Get-ClaudeResourcesPath
+    $oldSkipAsarPatch = $SkipAsarPatch
+    $SkipAsarPatch = $true
+    try {
+        $paths = Get-ClaudeResourcesPath
+    }
+    finally {
+        $SkipAsarPatch = $oldSkipAsarPatch
+    }
     $claudePath = $paths["App"]
     $resourcesPath = $paths["Resources"]
 
@@ -1309,6 +1560,10 @@ function Uninstall-WindowsLanguagePack {
     Write-Step "[1/4] 恢复前端 bundle 和 app.asar"
     Restore-LatestBackup $resourcesPath
     Sync-ClaudeExeAsarIntegrity $resourcesPath
+
+    Write-Step "删除 AppX 本地补丁副本"
+    Remove-ClaudeForkShortcuts
+    Remove-AppxClaudeForks
 
     Write-Step "[2/4] 删除中文资源"
     Remove-LanguageFiles $resourcesPath
