@@ -6,6 +6,8 @@ macOS 可双击 `install-mac.command`，Windows 可右键管理员运行 `instal
 
 本汉化方案仅支持使用 API 的方式。请先参照 https://linux.do/t/topic/2032192 配置。
 如果脚本检测到第三方 API 配置目录为空，会在安装前询问是否继续配置。
+
+
 **遇到问题请及时反馈，欢迎扫码加入 claude desktop 交流。**
 
 <img src="docs/images/wechat-groups.jpg" alt="claude desktop 交流群二维码" width="360">
