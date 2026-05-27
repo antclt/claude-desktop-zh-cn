@@ -523,27 +523,57 @@ def build_online_dom_translation_script(lang_code: str, mapping: dict[str, str])
     )
 
 
-def build_online_locale_main_process_script(lang_code: str, mapping: dict[str, str]) -> str:
+def build_online_locale_main_process_script(
+    lang_code: str,
+    mapping: dict[str, str],
+    web_contents_expr: str,
+    existing_dom_ready_body: str,
+) -> str:
     script = (
         f'(()=>{{try{{const l="{lang_code}";'
         'if(localStorage.getItem("spa:locale")!==l){localStorage.setItem("spa:locale",l)}}catch(e){}})();'
         + build_online_dom_translation_script(lang_code, mapping)
     )
     return (
-        's.webContents.on("dom-ready",()=>{DIA();'
-        f"s.webContents.executeJavaScript({json.dumps(script)}).catch(()=>{{}})"
+        f'{web_contents_expr}.on("dom-ready",()=>{{{existing_dom_ready_body};'
+        f"{web_contents_expr}.executeJavaScript({json.dumps(script)}).catch(()=>{{}})"
         f"}});/*{ONLINE_LOCALE_MAIN_MARKER}*/"
     )
 
 
 def strip_online_locale_main_process_patch(text: str) -> tuple[str, bool]:
     pattern = re.compile(
-        r's\.webContents\.on\("dom-ready",\(\)=>\{DIA\(\);'
-        r's\.webContents\.executeJavaScript\("(?:\\.|[^"])*"\)\.catch\(\(\)=>\{\}\)'
+        r'(?P<web_contents>[A-Za-z_$][A-Za-z0-9_$]*\.webContents)'
+        r'\.on\("dom-ready",\(\)=>\{'
+        r'(?P<body>.*?);'
+        r'(?P=web_contents)\.executeJavaScript\("(?:\\.|[^"])*"\)\.catch\(\(\)=>\{\}\)'
         rf'\}}\);/\*{ONLINE_LOCALE_MAIN_MARKER}\*/'
     )
-    patched, count = pattern.subn('s.webContents.on("dom-ready",()=>{DIA()});', text)
+
+    def restore(match: re.Match[str]) -> str:
+        web_contents = match.group("web_contents")
+        body = match.group("body")
+        return f'{web_contents}.on("dom-ready",()=>{{{body}}});'
+
+    patched, count = pattern.subn(restore, text)
     return patched, count > 0
+
+
+def find_main_view_dom_ready_handler(text: str) -> re.Match[str] | None:
+    pattern = re.compile(
+        r'(?P<web_contents>[A-Za-z_$][A-Za-z0-9_$]*\.webContents)'
+        r'\.on\("dom-ready",\(\)=>\{(?P<body>[^{}]*)\}\);'
+    )
+    matches = [
+        match
+        for match in pattern.finditer(text)
+        if ".vite/build/mainView.js" in text[max(0, match.start() - 2500) : match.start()]
+    ]
+    if len(matches) > 1:
+        raise SystemExit("Could not patch online locale main-process hook: multiple main view dom-ready handlers found.")
+    if matches:
+        return matches[0]
+    return pattern.search(text)
 
 
 def patch_online_locale_main_process(app: Path, lang_code: str) -> None:
@@ -561,18 +591,24 @@ def patch_online_locale_main_process(app: Path, lang_code: str) -> None:
 
     text = data[content_offset:content_end].decode("utf-8")
     text, had_existing = strip_online_locale_main_process_patch(text)
-    anchor = 's.webContents.on("dom-ready",()=>{DIA()});'
     mapping = build_online_translation_map(app, lang_code)
-    injection = build_online_locale_main_process_script(lang_code, mapping)
-    if injection in text:
-        print("Online claude.ai locale main-process patch already applied")
-        return
-    if anchor not in text:
+    handler = find_main_view_dom_ready_handler(text)
+    if handler is None:
         if had_existing:
             raise SystemExit("Could not refresh online locale main-process patch.")
         raise SystemExit("Could not find main view dom-ready anchor for online locale patch.")
 
-    patched = text.replace(anchor, injection, 1).encode("utf-8")
+    injection = build_online_locale_main_process_script(
+        lang_code,
+        mapping,
+        handler.group("web_contents"),
+        handler.group("body"),
+    )
+    if injection in text:
+        print("Online claude.ai locale main-process patch already applied")
+        return
+
+    patched = (text[: handler.start()] + injection + text[handler.end() :]).encode("utf-8")
     replace_asar_file_content(app, ASAR_PATCH_TARGET, patched)
     action = "Refreshed" if had_existing else "Patched"
     print(f"{action} online claude.ai locale main-process hook: {len(mapping)} DOM strings")
