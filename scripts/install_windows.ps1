@@ -1181,6 +1181,10 @@ function Replace-FrontendHardcodedText {
         return @{ Text = $Text; Count = $occurrences }
     }
 
+    if (-not $Text.Contains($Source)) {
+        return @{ Text = $Text; Count = 0 }
+    }
+
     $pattern = '(?<![A-Za-z0-9_$])' + [System.Text.RegularExpressions.Regex]::Escape($Source) + '(?![A-Za-z0-9_$])'
     $script:__frontendReplacementCount = 0
     $patched = [System.Text.RegularExpressions.Regex]::Replace(
@@ -1294,28 +1298,50 @@ function Patch-OnlineDomTranslation {
     $content = [byte[]]::new([int]$contentSize)
     [System.Array]::Copy($data, [int]$contentOffset, $content, 0, [int]$contentSize)
     $text = [System.Text.Encoding]::UTF8.GetString($content)
-    $existingPattern = 's\.webContents\.on\("dom-ready",\(\)=>\{DIA\(\);s\.webContents\.executeJavaScript\("(?:\\.|[^"])*"\)\.catch\(\(\)=>\{\}\)\}\);/\*' + [System.Text.RegularExpressions.Regex]::Escape($OnlineLocaleMainMarker) + '\*/'
+    $existingPattern = '(?<receiver>[A-Za-z_$][A-Za-z0-9_$]*)\.webContents\.on\("dom-ready",\(\)=>\{(?<body>(?:(?!\k<receiver>\.webContents\.executeJavaScript).)*);?\k<receiver>\.webContents\.executeJavaScript\("(?:\\.|[^"\\])*"\)\.catch\(\(\)=>\{\}\)\}\);/\*' + [System.Text.RegularExpressions.Regex]::Escape($OnlineLocaleMainMarker) + '\*/'
     $hadExisting = [System.Text.RegularExpressions.Regex]::IsMatch($text, $existingPattern)
     if ($hadExisting) {
-        $text = [System.Text.RegularExpressions.Regex]::Replace($text, $existingPattern, 's.webContents.on("dom-ready",()=>{DIA()});')
-    }
-
-    $anchor = 's.webContents.on("dom-ready",()=>{DIA()});'
-    if (-not $text.Contains($anchor)) {
-        throw "Could not find main view dom-ready anchor for online DOM translation patch."
+        $text = [System.Text.RegularExpressions.Regex]::Replace($text, $existingPattern, '${receiver}.webContents.on("dom-ready",()=>{${body}});')
     }
 
     $mapping = Get-OnlineTranslationMap $ResourcesPath $Pack $Language
     $script = Get-OnlineDomTranslationScript $Language $mapping
     $scriptLiteral = $script | ConvertTo-Json -Compress
+
+    $hookPattern = '(?<receiver>[A-Za-z_$][A-Za-z0-9_$]*)\.webContents\.on\("dom-ready",\(\)=>\{(?<body>[^{}]*"main_view_dom_ready"[^{}]*)\}\);'
+    $hookMatch = [System.Text.RegularExpressions.Regex]::Match($text, $hookPattern)
+    if ($hookMatch.Success) {
+        $receiver = $hookMatch.Groups["receiver"].Value
+        $body = $hookMatch.Groups["body"].Value.TrimEnd(";")
+        $injectedBody = $body + ";" + $receiver + ".webContents.executeJavaScript(" + $scriptLiteral + ").catch(()=>{})"
+        $injection = $receiver + '.webContents.on("dom-ready",()=>{' + $injectedBody + '});/*' + $OnlineLocaleMainMarker + '*/'
+        if ($text.Contains($injection)) {
+            Write-Host "  online claude.ai DOM translation already patched" -ForegroundColor Green
+            return
+        }
+
+        $patched = $text.Substring(0, $hookMatch.Index) + $injection + $text.Substring($hookMatch.Index + $hookMatch.Length)
+        $patchedContent = [System.Text.Encoding]::UTF8.GetBytes($patched)
+        [void](Replace-AsarFileContent $ResourcesPath $AsarPatchTarget $patchedContent)
+        $action = if ($hadExisting) { "refreshed" } else { "patched" }
+        Write-Host "  $action online claude.ai DOM translation: $($mapping.Count) strings" -ForegroundColor Green
+        return
+    }
+
+    $legacyAnchor = 's.webContents.on("dom-ready",()=>{DIA()});'
+    if (-not $text.Contains($legacyAnchor)) {
+        Write-Host "  [警告] 未找到在线 claude.ai DOM 翻译注入点，跳过 app.asar 在线页面补丁；本地中文资源和语言配置会继续安装。" -ForegroundColor DarkYellow
+        return
+    }
+
     $injection = 's.webContents.on("dom-ready",()=>{DIA();s.webContents.executeJavaScript(' + $scriptLiteral + ').catch(()=>{})});/*' + $OnlineLocaleMainMarker + '*/'
     if ($text.Contains($injection)) {
         Write-Host "  online claude.ai DOM translation already patched" -ForegroundColor Green
         return
     }
 
-    $anchorIndex = $text.IndexOf($anchor, [System.StringComparison]::Ordinal)
-    $patched = $text.Substring(0, $anchorIndex) + $injection + $text.Substring($anchorIndex + $anchor.Length)
+    $anchorIndex = $text.IndexOf($legacyAnchor, [System.StringComparison]::Ordinal)
+    $patched = $text.Substring(0, $anchorIndex) + $injection + $text.Substring($anchorIndex + $legacyAnchor.Length)
     $patchedContent = [System.Text.Encoding]::UTF8.GetBytes($patched)
     [void](Replace-AsarFileContent $ResourcesPath $AsarPatchTarget $patchedContent)
     $action = if ($hadExisting) { "refreshed" } else { "patched" }
