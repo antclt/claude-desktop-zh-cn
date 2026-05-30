@@ -25,6 +25,34 @@ $OnlineTranslationMaxSourceLength = 240
 $script:CurrentBackupSetPath = $null
 $script:DetectedUnpackagedClaudePaths = @()
 $script:DetectedMultipleClaudeInstalls = $false
+$script:InstallLogPath = $null
+$script:InstallTranscriptStarted = $false
+
+function Start-InstallLog {
+    try {
+        $root = if ($PSScriptRoot) { Split-Path -Parent $PSScriptRoot } else { (Get-Location).Path }
+        $script:InstallLogPath = Join-Path $root "install-windows.log"
+        Start-Transcript -Path $script:InstallLogPath -Force | Out-Null
+        $script:InstallTranscriptStarted = $true
+    }
+    catch {
+        $script:InstallTranscriptStarted = $false
+    }
+}
+
+function Stop-InstallLog {
+    if (-not $script:InstallTranscriptStarted) {
+        return
+    }
+    try {
+        Stop-Transcript | Out-Null
+    }
+    catch {
+    }
+    $script:InstallTranscriptStarted = $false
+}
+
+Start-InstallLog
 
 function Compare-ReleaseVersion {
     param(
@@ -166,6 +194,21 @@ function Write-Step {
     param([string]$Message)
     Write-Host ""
     Write-Host $Message -ForegroundColor Yellow
+}
+
+function Format-ByteSize {
+    param([int64]$Bytes)
+
+    if ($Bytes -ge 1GB) {
+        return "$([Math]::Round($Bytes / 1GB, 2)) GB"
+    }
+    if ($Bytes -ge 1MB) {
+        return "$([Math]::Round($Bytes / 1MB, 1)) MB"
+    }
+    if ($Bytes -ge 1KB) {
+        return "$([Math]::Round($Bytes / 1KB, 1)) KB"
+    }
+    return "$Bytes bytes"
 }
 
 function Get-UnpackagedClaudePaths {
@@ -621,6 +664,38 @@ function Read-AsarHeader {
     }
 }
 
+function Read-AsarHeaderFromFile {
+    param([string]$Path)
+
+    Require-File $Path
+    $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+    try {
+        if ($stream.Length -lt 16) {
+            throw "Unsupported app.asar header in $Path"
+        }
+
+        $prefix = [byte[]]::new(8)
+        if ($stream.Read($prefix, 0, $prefix.Length) -ne $prefix.Length) {
+            throw "Unsupported app.asar header in $Path"
+        }
+        $sizePicklePayload = Get-UInt32LE $prefix 0
+        $headerSize = Get-UInt32LE $prefix 4
+        if (($sizePicklePayload -ne 4) -or ($headerSize -le 0) -or ($stream.Length -lt (8 + $headerSize))) {
+            throw "Unsupported app.asar size pickle in $Path"
+        }
+
+        $data = [byte[]]::new(8 + $headerSize)
+        [System.Array]::Copy($prefix, 0, $data, 0, $prefix.Length)
+        if ($stream.Read($data, 8, [int]$headerSize) -ne [int]$headerSize) {
+            throw "Unsupported app.asar header pickle in $Path"
+        }
+        return Read-AsarHeader $data $Path
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 function Encode-AsarHeader {
     param(
         [string]$HeaderString,
@@ -745,9 +820,13 @@ function Replace-AsarFileContent {
     $asarPath = Join-Path $ResourcesPath "app.asar"
     Require-File $asarPath
 
-    Write-Host "  reading app.asar: $FilePath" -ForegroundColor DarkGray
+    $asarInfo = Get-Item -LiteralPath $asarPath
+    Write-Host "  reading app.asar ($(Format-ByteSize $asarInfo.Length)): $FilePath" -ForegroundColor DarkGray
+    Write-Host "  [进度] 正在读取 app.asar，大文件或共享盘可能需要一些时间..." -ForegroundColor DarkGray
     $data = [System.IO.File]::ReadAllBytes($asarPath)
+    Write-Host "  [进度] app.asar 读取完成，正在解析 asar 头..." -ForegroundColor DarkGray
     $parsed = Read-AsarHeader $data $asarPath
+    Write-Host "  [进度] asar 头解析完成，正在定位目标文件..." -ForegroundColor DarkGray
     $headerSize = $parsed["HeaderSize"]
     $header = $parsed["Header"]
     $entry = Get-AsarFileEntry $header $FilePath
@@ -761,7 +840,8 @@ function Replace-AsarFileContent {
 
     $oldContent = [byte[]]::new([int]$contentSize)
     [System.Array]::Copy($data, [int]$contentOffset, $oldContent, 0, [int]$contentSize)
-    Write-Host "  checking app.asar target content: $([Math]::Round($contentSize / 1MB, 1)) MB" -ForegroundColor DarkGray
+    Write-Host "  checking app.asar target content: $(Format-ByteSize $contentSize)" -ForegroundColor DarkGray
+    Write-Host "  [进度] 正在比较旧内容和新补丁内容..." -ForegroundColor DarkGray
     $contentMatches = $oldContent.Length -eq $PatchedContent.Length
     if ($contentMatches) {
         for ($i = 0; $i -lt $oldContent.Length; $i++) {
@@ -778,6 +858,7 @@ function Replace-AsarFileContent {
     $targetOffset = [int64]$entry.offset
     $delta = [int64]$PatchedContent.Length - $contentSize
     Write-Host "  rebuilding app.asar content: delta=$delta bytes" -ForegroundColor DarkGray
+    Write-Host "  [进度] 正在更新目标文件完整性信息..." -ForegroundColor DarkGray
     $entry.size = $PatchedContent.Length
     $entry.integrity = Get-AsarFileIntegrity $PatchedContent
     if ($delta -ne 0) {
@@ -788,6 +869,7 @@ function Replace-AsarFileContent {
         }
     }
 
+    Write-Host "  [进度] 正在拼接新的 app.asar 内容..." -ForegroundColor DarkGray
     $bodyStart = 8 + $headerSize
     $body = [System.IO.MemoryStream]::new()
     $body.Write($data, $bodyStart, [int]($contentOffset - $bodyStart))
@@ -798,13 +880,16 @@ function Replace-AsarFileContent {
     Write-Host "  serializing app.asar header" -ForegroundColor DarkGray
     $updatedHeaderString = $header | ConvertTo-Json -Compress -Depth 100
     $updatedHeader = Encode-AsarHeaderDynamic $updatedHeaderString
+    Write-Host "  [进度] 正在合并 header 和 body..." -ForegroundColor DarkGray
     $updatedBody = $body.ToArray()
     $updated = [byte[]]::new($updatedHeader.Length + $updatedBody.Length)
     [System.Array]::Copy($updatedHeader, 0, $updated, 0, $updatedHeader.Length)
     [System.Array]::Copy($updatedBody, 0, $updated, $updatedHeader.Length, $updatedBody.Length)
 
+    Write-Host "  [进度] 正在创建/复用备份..." -ForegroundColor DarkGray
     Backup-ModifiedFile $ResourcesPath $asarPath
-    Write-Host "  writing app.asar: $([Math]::Round($updated.Length / 1MB, 1)) MB" -ForegroundColor DarkGray
+    Write-Host "  writing app.asar: $(Format-ByteSize $updated.Length)" -ForegroundColor DarkGray
+    Write-Host "  [进度] 正在写回 app.asar，请勿关闭窗口..." -ForegroundColor DarkGray
     [System.IO.File]::WriteAllBytes($asarPath, $updated)
     Write-Host "  syncing Claude.exe app.asar integrity" -ForegroundColor DarkGray
     Sync-ClaudeExeAsarIntegrity $ResourcesPath
@@ -998,9 +1083,7 @@ function Get-AsarFileIntegrity {
 function Get-AsarHeaderHash {
     param([string]$AsarPath)
 
-    Require-File $AsarPath
-    $data = [System.IO.File]::ReadAllBytes($AsarPath)
-    $parsed = Read-AsarHeader $data $AsarPath
+    $parsed = Read-AsarHeaderFromFile $AsarPath
     return Get-Sha256Hex ([System.Text.Encoding]::UTF8.GetBytes($parsed["HeaderString"]))
 }
 
@@ -1015,20 +1098,39 @@ function Sync-ClaudeExeAsarIntegrity {
     Require-File $exePath
 
     $asarPath = Join-Path $ResourcesPath "app.asar"
+    Write-Host "  [进度] 正在计算 app.asar header hash..." -ForegroundColor DarkGray
     $headerHash = Get-AsarHeaderHash $asarPath
-    $marker = [System.Text.Encoding]::ASCII.GetBytes('resources\\app.asar","alg":"SHA256","value":"')
-    $exeBytes = [System.IO.File]::ReadAllBytes($exePath)
-    $matches = Find-BytePattern $exeBytes $marker
-    if ($matches.Count -ne 1) {
+    $marker = 'resources\\app.asar","alg":"SHA256","value":"'
+    $exeInfo = Get-Item -LiteralPath $exePath
+    Write-Host "  [进度] 正在读取 Claude.exe ($(Format-ByteSize $exeInfo.Length)) 用于快速定位完整性标记..." -ForegroundColor DarkGray
+    $exeText = [System.IO.File]::ReadAllText($exePath, [System.Text.Encoding]::ASCII)
+    Write-Host "  [进度] 正在用 .NET IndexOf 扫描 Claude.exe 内嵌 app.asar 完整性标记..." -ForegroundColor DarkGray
+    $markerIndex = $exeText.IndexOf($marker, [System.StringComparison]::Ordinal)
+    if ($markerIndex -lt 0) {
         throw "Could not find Claude.exe app.asar integrity marker. Claude bundle format may have changed."
     }
+    if ($exeText.IndexOf($marker, $markerIndex + 1, [System.StringComparison]::Ordinal) -ge 0) {
+        throw "Could not find a unique Claude.exe app.asar integrity marker. Claude bundle format may have changed."
+    }
 
-    $hashOffset = $matches[0] + $marker.Length
-    if (($hashOffset + 64) -gt $exeBytes.Length) {
+    $hashOffset = $markerIndex + $marker.Length
+    if (($hashOffset + 64) -gt $exeInfo.Length) {
         throw "Claude.exe app.asar integrity marker has invalid bounds."
     }
 
-    $currentHash = [System.Text.Encoding]::ASCII.GetString($exeBytes, $hashOffset, 64)
+    $stream = [System.IO.File]::Open($exePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::Read)
+    try {
+        $hashBytes = [byte[]]::new(64)
+        $stream.Seek([int64]$hashOffset, [System.IO.SeekOrigin]::Begin) | Out-Null
+        if ($stream.Read($hashBytes, 0, $hashBytes.Length) -ne $hashBytes.Length) {
+            throw "Claude.exe app.asar integrity marker has invalid bounds."
+        }
+        $currentHash = [System.Text.Encoding]::ASCII.GetString($hashBytes)
+    }
+    finally {
+        $stream.Dispose()
+    }
+
     if ($currentHash -eq $headerHash) {
         Write-Host "  Claude.exe app.asar integrity already matches" -ForegroundColor Green
         return
@@ -1038,9 +1140,16 @@ function Sync-ClaudeExeAsarIntegrity {
     }
 
     Backup-AppFile $ResourcesPath $exePath
+    Write-Host "  [进度] 正在定点写回 Claude.exe 完整性哈希（64 bytes）..." -ForegroundColor DarkGray
     $newHashBytes = [System.Text.Encoding]::ASCII.GetBytes($headerHash)
-    [System.Array]::Copy($newHashBytes, 0, $exeBytes, $hashOffset, $newHashBytes.Length)
-    [System.IO.File]::WriteAllBytes($exePath, $exeBytes)
+    $stream = [System.IO.File]::Open($exePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::Read)
+    try {
+        $stream.Seek([int64]$hashOffset, [System.IO.SeekOrigin]::Begin) | Out-Null
+        $stream.Write($newHashBytes, 0, $newHashBytes.Length)
+    }
+    finally {
+        $stream.Dispose()
+    }
     Write-Host "  updated Claude.exe app.asar integrity: $currentHash -> $headerHash" -ForegroundColor Green
 }
 
@@ -1283,6 +1392,116 @@ function Get-OnlineDomTranslationScript {
     return $template.Replace("__LANGUAGE__", $languageJson).Replace("__MAPPING__", $mappingJson)
 }
 
+function Remove-ExistingOnlineDomTranslationPatch {
+    param([string]$Text)
+
+    $markerComment = "/*$OnlineLocaleMainMarker*/"
+    $markerIndex = $Text.IndexOf($markerComment, [System.StringComparison]::Ordinal)
+    if ($markerIndex -lt 0) {
+        return @{ Text = $Text; Removed = $false }
+    }
+
+    Write-Host "  [进度] 检测到旧版在线 DOM 补丁标记，正在快速定位旧注入..." -ForegroundColor DarkGray
+    $eventAnchor = '.webContents.on("dom-ready",()=>{'
+    $anchorIndex = $Text.LastIndexOf($eventAnchor, $markerIndex, [System.StringComparison]::Ordinal)
+    if ($anchorIndex -lt 1) {
+        Write-Host "  [警告] 找到旧补丁标记，但无法定位 dom-ready 注入起点；将保留原内容继续。" -ForegroundColor DarkYellow
+        return @{ Text = $Text; Removed = $false }
+    }
+
+    $receiverStart = $anchorIndex - 1
+    while ($receiverStart -ge 0) {
+        $ch = $Text[$receiverStart]
+        $isIdentifierChar = (($ch -ge 'a') -and ($ch -le 'z')) -or (($ch -ge 'A') -and ($ch -le 'Z')) -or (($ch -ge '0') -and ($ch -le '9')) -or ($ch -eq '_') -or ($ch -eq '$')
+        if (-not $isIdentifierChar) {
+            break
+        }
+        $receiverStart -= 1
+    }
+    $receiverStart += 1
+    if ($receiverStart -ge $anchorIndex) {
+        Write-Host "  [警告] 找到旧补丁标记，但无法识别 webContents 变量名；将保留原内容继续。" -ForegroundColor DarkYellow
+        return @{ Text = $Text; Removed = $false }
+    }
+
+    $receiver = $Text.Substring($receiverStart, $anchorIndex - $receiverStart)
+    $bodyStart = $anchorIndex + $eventAnchor.Length
+    $executeNeedle = ";" + $receiver + ".webContents.executeJavaScript("
+    $executeIndex = $Text.LastIndexOf($executeNeedle, $markerIndex, [System.StringComparison]::Ordinal)
+    if (($executeIndex -lt $bodyStart) -or (-not $Text.Substring($markerIndex - 3, 3).Equals("});", [System.StringComparison]::Ordinal))) {
+        Write-Host "  [警告] 找到旧补丁标记，但旧注入结构不符合预期；将保留原内容继续。" -ForegroundColor DarkYellow
+        return @{ Text = $Text; Removed = $false }
+    }
+
+    $body = $Text.Substring($bodyStart, $executeIndex - $bodyStart)
+    $replacement = $receiver + '.webContents.on("dom-ready",()=>{' + $body + '});'
+    $patchedEnd = $markerIndex + $markerComment.Length
+    $patchedText = $Text.Substring(0, $receiverStart) + $replacement + $Text.Substring($patchedEnd)
+    return @{ Text = $patchedText; Removed = $true }
+}
+
+function Find-OnlineDomTranslationHook {
+    param([string]$Text)
+
+    $readyNeedle = "main_view_dom_ready"
+    $eventAnchor = '.webContents.on("dom-ready",()=>{'
+    $handlerEndNeedle = "});"
+
+    Write-Host "  [进度] 正在快速扫描 dom-ready handler..." -ForegroundColor DarkGray
+    $searchIndex = 0
+    $checked = 0
+    while ($true) {
+        $anchorIndex = $Text.IndexOf($eventAnchor, $searchIndex, [System.StringComparison]::Ordinal)
+        if ($anchorIndex -lt 0) {
+            Write-Host "  [进度] 已扫描 $checked 个 dom-ready handler，未找到 main_view_dom_ready handler，准备尝试 legacy 注入点..." -ForegroundColor DarkGray
+            return @{ Success = $false }
+        }
+        $checked += 1
+
+        $bodyStart = $anchorIndex + $eventAnchor.Length
+        $handlerEnd = $Text.IndexOf($handlerEndNeedle, $bodyStart, [System.StringComparison]::Ordinal)
+        if ($handlerEnd -lt $bodyStart) {
+            Write-Host "  [进度] 第 $checked 个 dom-ready handler 结束位置异常，继续查找下一个..." -ForegroundColor DarkGray
+            $searchIndex = $bodyStart
+            continue
+        }
+
+        $body = $Text.Substring($bodyStart, $handlerEnd - $bodyStart).TrimEnd(";")
+        if (-not $body.Contains($readyNeedle)) {
+            $searchIndex = $handlerEnd + $handlerEndNeedle.Length
+            continue
+        }
+
+        Write-Host "  [进度] 已找到包含 main_view_dom_ready 的 dom-ready handler，正在识别 webContents 变量..." -ForegroundColor DarkGray
+        $receiverStart = $anchorIndex - 1
+        while ($receiverStart -ge 0) {
+            $ch = $Text[$receiverStart]
+            $isIdentifierChar = (($ch -ge 'a') -and ($ch -le 'z')) -or (($ch -ge 'A') -and ($ch -le 'Z')) -or (($ch -ge '0') -and ($ch -le '9')) -or ($ch -eq '_') -or ($ch -eq '$')
+            if (-not $isIdentifierChar) {
+                break
+            }
+            $receiverStart -= 1
+        }
+        $receiverStart += 1
+        if ($receiverStart -ge $anchorIndex) {
+            Write-Host "  [进度] 无法识别 webContents 变量名，继续查找下一个 handler..." -ForegroundColor DarkGray
+            $searchIndex = $handlerEnd + $handlerEndNeedle.Length
+            continue
+        }
+
+        $receiver = $Text.Substring($receiverStart, $anchorIndex - $receiverStart)
+        $hookLength = ($handlerEnd + $handlerEndNeedle.Length) - $receiverStart
+        Write-Host "  [进度] 在线 DOM 注入点定位完成：handler=$checked, receiver=$receiver。" -ForegroundColor DarkGray
+        return @{
+            Success = $true
+            Index = $receiverStart
+            Length = $hookLength
+            Receiver = $receiver
+            Body = $body
+        }
+    }
+}
+
 function Patch-OnlineDomTranslation {
     param(
         [string]$ResourcesPath,
@@ -1294,8 +1513,12 @@ function Patch-OnlineDomTranslation {
     Require-File $asarPath
 
     Write-Host "  preparing online claude.ai DOM translation patch" -ForegroundColor DarkGray
+    $asarInfo = Get-Item -LiteralPath $asarPath
+    Write-Host "  [进度] 正在读取 app.asar ($(Format-ByteSize $asarInfo.Length))..." -ForegroundColor DarkGray
     $data = [System.IO.File]::ReadAllBytes($asarPath)
+    Write-Host "  [进度] app.asar 读取完成，正在解析 asar 头..." -ForegroundColor DarkGray
     $parsed = Read-AsarHeader $data $asarPath
+    Write-Host "  [进度] asar 头解析完成，正在提取 main-process bundle..." -ForegroundColor DarkGray
     $headerSize = $parsed["HeaderSize"]
     $header = $parsed["Header"]
     $entry = Get-AsarFileEntry $header $AsarPatchTarget
@@ -1309,12 +1532,20 @@ function Patch-OnlineDomTranslation {
 
     $content = [byte[]]::new([int]$contentSize)
     [System.Array]::Copy($data, [int]$contentOffset, $content, 0, [int]$contentSize)
-    Write-Host "  loaded main-process bundle: $([Math]::Round($contentSize / 1MB, 1)) MB" -ForegroundColor DarkGray
+    Write-Host "  loaded main-process bundle: $(Format-ByteSize $contentSize)" -ForegroundColor DarkGray
+    Write-Host "  [进度] 正在解码 main-process bundle 文本..." -ForegroundColor DarkGray
     $text = [System.Text.Encoding]::UTF8.GetString($content)
-    $existingPattern = '(?<receiver>[A-Za-z_$][A-Za-z0-9_$]*)\.webContents\.on\("dom-ready",\(\)=>\{(?<body>(?:(?!\k<receiver>\.webContents\.executeJavaScript).)*);?\k<receiver>\.webContents\.executeJavaScript\("(?:\\.|[^"\\])*"\)\.catch\(\(\)=>\{\}\)\}\);/\*' + [System.Text.RegularExpressions.Regex]::Escape($OnlineLocaleMainMarker) + '\*/'
-    $hadExisting = [System.Text.RegularExpressions.Regex]::IsMatch($text, $existingPattern)
-    if ($hadExisting) {
-        $text = [System.Text.RegularExpressions.Regex]::Replace($text, $existingPattern, '${receiver}.webContents.on("dom-ready",()=>{${body}});')
+    Write-Host "  [进度] 正在快速检查是否已有旧版在线 DOM 补丁标记..." -ForegroundColor DarkGray
+    if ($text.Contains($OnlineLocaleMainMarker)) {
+        $existingPatch = Remove-ExistingOnlineDomTranslationPatch $text
+        $text = $existingPatch["Text"]
+        $hadExisting = [bool]$existingPatch["Removed"]
+        if ($hadExisting) {
+            Write-Host "  [进度] 已移除旧版在线 DOM 补丁，继续生成新补丁..." -ForegroundColor DarkGray
+        }
+    } else {
+        Write-Host "  [进度] 未发现旧版在线 DOM 补丁，继续生成新补丁..." -ForegroundColor DarkGray
+        $hadExisting = $false
     }
 
     $mapping = Get-OnlineTranslationMap $ResourcesPath $Pack $Language
@@ -1322,11 +1553,10 @@ function Patch-OnlineDomTranslation {
     $scriptLiteral = $script | ConvertTo-Json -Compress
 
     Write-Host "  locating online DOM translation injection point" -ForegroundColor DarkGray
-    $hookPattern = '(?<receiver>[A-Za-z_$][A-Za-z0-9_$]*)\.webContents\.on\("dom-ready",\(\)=>\{(?<body>[^{}]*"main_view_dom_ready"[^{}]*)\}\);'
-    $hookMatch = [System.Text.RegularExpressions.Regex]::Match($text, $hookPattern)
-    if ($hookMatch.Success) {
-        $receiver = $hookMatch.Groups["receiver"].Value
-        $body = $hookMatch.Groups["body"].Value.TrimEnd(";")
+    $hookMatch = Find-OnlineDomTranslationHook $text
+    if ($hookMatch["Success"]) {
+        $receiver = $hookMatch["Receiver"]
+        $body = $hookMatch["Body"]
         $injectedBody = $body + ";" + $receiver + ".webContents.executeJavaScript(" + $scriptLiteral + ").catch(()=>{})"
         $injection = $receiver + '.webContents.on("dom-ready",()=>{' + $injectedBody + '});/*' + $OnlineLocaleMainMarker + '*/'
         if ($text.Contains($injection)) {
@@ -1335,7 +1565,9 @@ function Patch-OnlineDomTranslation {
         }
 
         Write-Host "  injecting online DOM translation hook" -ForegroundColor DarkGray
-        $patched = $text.Substring(0, $hookMatch.Index) + $injection + $text.Substring($hookMatch.Index + $hookMatch.Length)
+        $hookIndex = [int]$hookMatch["Index"]
+        $hookLength = [int]$hookMatch["Length"]
+        $patched = $text.Substring(0, $hookIndex) + $injection + $text.Substring($hookIndex + $hookLength)
         $patchedContent = [System.Text.Encoding]::UTF8.GetBytes($patched)
         [void](Replace-AsarFileContent $ResourcesPath $AsarPatchTarget $patchedContent)
         $action = if ($hadExisting) { "refreshed" } else { "patched" }
@@ -1499,18 +1731,50 @@ function Patch-CoworkModernInstallerCheck {
     [System.Array]::Copy($data, [int]$contentOffset, $content, 0, [int]$contentSize)
     $contentText = [System.Text.Encoding]::ASCII.GetString($content)
 
-    if ($contentText.Contains('function _I(){return mo?(XX="patched",sP=!0,!0):!1}')) {
+    if (
+        $contentText.Contains('function _I(){return mo?(XX="patched",sP=!0,!0):!1}') -or
+        $contentText.Contains('function LI(){return io?(nAA="patched",A2=!0,!0):!1}')
+    ) {
         Write-Host "  Cowork modern installer check already patched" -ForegroundColor Green
         Sync-ClaudeExeAsarIntegrity $ResourcesPath
         return
     }
 
-    $source = 'function _I(){return mo?sP!==void 0?sP:process.windowsStore?(XX="windowsStore",sP=!0,!0):uVe()?(XX="appPath",sP=!0,!0):(XX=null,sP=!1,!1):!1}'
-    $sourceIndex = $contentText.IndexOf($source, [System.StringComparison]::Ordinal)
-    if ($sourceIndex -lt 0 -or $contentText.IndexOf($source, $sourceIndex + $source.Length, [System.StringComparison]::Ordinal) -ge 0) {
-        throw "Could not patch Cowork modern installer check. Claude bundle format may have changed."
+    $patches = @(
+        @{
+            Source = 'function _I(){return mo?sP!==void 0?sP:process.windowsStore?(XX="windowsStore",sP=!0,!0):uVe()?(XX="appPath",sP=!0,!0):(XX=null,sP=!1,!1):!1}'
+            Target = 'function _I(){return mo?(XX="patched",sP=!0,!0):!1}'
+        },
+        @{
+            Source = 'function LI(){return io?A2!==void 0?A2:process.windowsStore?(nAA="windowsStore",A2=!0,!0):pje()?(nAA="appPath",A2=!0,!0):(nAA=null,A2=!1,!1):!1}'
+            Target = 'function LI(){return io?(nAA="patched",A2=!0,!0):!1}'
+        }
+    )
+
+    $selectedPatch = $null
+    $sourceIndex = -1
+    foreach ($candidate in $patches) {
+        $source = [string]$candidate["Source"]
+        $candidateIndex = $contentText.IndexOf($source, [System.StringComparison]::Ordinal)
+        if ($candidateIndex -lt 0) {
+            continue
+        }
+        if ($contentText.IndexOf($source, $candidateIndex + $source.Length, [System.StringComparison]::Ordinal) -ge 0) {
+            Write-Host "  [警告] Cowork modern installer check 匹配到多个候选，跳过该补丁；中文补丁和第三方模型名补丁已继续保留。" -ForegroundColor DarkYellow
+            return
+        }
+        $selectedPatch = $candidate
+        $sourceIndex = $candidateIndex
+        break
     }
-    $target = 'function _I(){return mo?(XX="patched",sP=!0,!0):!1}'
+
+    if ($null -eq $selectedPatch) {
+        Write-Host "  [警告] 未找到 Cowork modern installer check 补丁点，跳过该补丁；中文补丁和第三方模型名补丁已继续保留。" -ForegroundColor DarkYellow
+        return
+    }
+
+    $source = [string]$selectedPatch["Source"]
+    $target = [string]$selectedPatch["Target"]
     if ($target.Length -gt $source.Length) {
         throw "Internal patch error: Cowork installer check replacement is longer than source."
     }
@@ -2025,7 +2289,24 @@ function Uninstall-WindowsLanguagePack {
     Write-Host "卸载完成。请重启 Claude Desktop 使更改生效。" -ForegroundColor Green
 }
 
-switch ($Action) {
-    "install" { Install-WindowsLanguagePack }
-    "uninstall" { Uninstall-WindowsLanguagePack }
+try {
+    switch ($Action) {
+        "install" { Install-WindowsLanguagePack }
+        "uninstall" { Uninstall-WindowsLanguagePack }
+    }
+
+    Stop-InstallLog
+    exit 0
+}
+catch {
+    Write-Host ""
+    Write-Host "[错误] $($_.Exception.Message)" -ForegroundColor Red
+    if ($script:InstallLogPath) {
+        Write-Host "[错误] 详细日志已写入: $script:InstallLogPath" -ForegroundColor Red
+    }
+    Stop-InstallLog
+    if ($Interactive) {
+        [void](Read-Host "安装未完成，按 Enter 退出")
+    }
+    exit 1
 }
