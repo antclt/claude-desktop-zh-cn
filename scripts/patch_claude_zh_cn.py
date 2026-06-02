@@ -507,6 +507,19 @@ def build_online_translation_map(app: Path, lang_code: str) -> dict[str, str]:
 
 def build_online_dom_translation_script(lang_code: str, mapping: dict[str, str]) -> str:
     mapping_json = json.dumps(mapping, ensure_ascii=False, separators=(",", ":"))
+    if lang_code == "zh-CN":
+        selected_text = "已选择 $1 项"
+        delete_selected_text = "删除 $1 个所选项目"
+    else:
+        selected_text = "已選擇 $1 項"
+        delete_selected_text = "刪除 $1 個所選項目"
+    dynamic_rules = "".join((
+        f'[/^(\\d+) selected$/,"{selected_text}"],'
+        f'[/^Delete (\\d+) selected item$/,"{delete_selected_text}"],'
+        f'[/^Delete (\\d+) selected items$/,"{delete_selected_text}"],'
+        '[/^Mon$/,"周一"],[/^Tue$/,"周二"],[/^Wed$/,"周三"],[/^Thu$/,"周四"],'
+        '[/^Fri$/,"周五"],[/^Sat$/,"周六"],[/^Sun$/,"周日"]'
+    ))
     return (
         "(()=>{try{"
         f'const L="{lang_code}",M={mapping_json};'
@@ -524,7 +537,8 @@ def build_online_dom_translation_script(lang_code: str, mapping: dict[str, str])
         '[/^Are you sure you want to delete (\\d+) chat\\? This cannot be undone\\.$/,"你确定要删除 $1 个聊天吗？此操作无法撤消。"],'
         '[/^Are you sure you want to delete (\\d+) chats\\? This cannot be undone\\.$/,"你确定要删除 $1 个聊天吗？此操作无法撤消。"],'
         '[/^Are you sure you want to permanently delete this chat\\? This cannot be undone\\.$/,"你确定要永久删除此聊天吗？此操作无法撤消。"],'
-        '[/^Are you sure you want to permanently delete these chats\\? This cannot be undone\\.$/,"你确定要永久删除这些聊天吗？此操作无法撤消。"]];'
+        '[/^Are you sure you want to permanently delete these chats\\? This cannot be undone\\.$/,"你确定要永久删除这些聊天吗？此操作无法撤消。"],'
+        f'{dynamic_rules}];'
         'const R=s=>{const n=N(s);if(M[n])return M[n];for(const [r,t] of G){const m=n.match(r);'
         'if(m)return t.replace("$1",m[1])}};'
         'const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]);'
@@ -538,8 +552,8 @@ def build_online_dom_translation_script(lang_code: str, mapping: dict[str, str])
         'document.querySelectorAll("[aria-label],[title],[placeholder],input,textarea").forEach(e=>{'
         '["aria-label","title","placeholder","value"].forEach(a=>{'
         'try{if(a==="value"&&!(e.matches("input[type=button],input[type=submit]")))return;'
-        "const v=e.getAttribute?e.getAttribute(a):e[a];const t=R(v);"
-        "if(t){if(e.setAttribute)e.setAttribute(a,t);else e[a]=t}}catch{}})});"
+        "let v=e.getAttribute?e.getAttribute(a):void 0;if(v==null&&a in e)v=e[a];const t=R(v);"
+        "if(t){if(e.setAttribute)e.setAttribute(a,t);try{if(a in e)e[a]=t}catch{}}}catch{}})});"
         'document.querySelectorAll("a").forEach(e=>{try{'
         'const r=e.getBoundingClientRect(),txt=N(e.textContent);'
         'if(txt==="Claude"&&r.left<100&&r.top<100)e.style.visibility="hidden"}catch{}});'
@@ -1338,28 +1352,6 @@ def set_third_party_auto_updates(user_home: Path, enabled: bool, dry_run: bool =
     return True
 
 
-def has_third_party_api_config(user_home: Path) -> bool:
-    config_library = user_home / "Library/Application Support/Claude-3p/configLibrary"
-    if not config_library.is_dir():
-        return False
-    return any(config_library.iterdir())
-
-
-def confirm_install_without_third_party_api_config(user_home: Path) -> bool:
-    if has_third_party_api_config(user_home):
-        return True
-
-    prompt = "未配置第三方API，程序运行后无效，请参照github上readme修改，是否继续配置？ [y/n]: "
-    while True:
-        choice = input(prompt).strip().lower()
-        if choice == "y":
-            return True
-        if choice == "n":
-            print("已取消配置，未修改 Claude Desktop。")
-            return False
-        print("请输入 y 或 n。")
-
-
 def backup_and_replace(original: Path, patched: Path, dry_run: bool) -> Path:
     start = time.perf_counter()
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -1505,9 +1497,6 @@ def main() -> int:
     lang_code = args.lang
     config = get_language_config(lang_code)
     label = config["label"]
-
-    if not confirm_install_without_third_party_api_config(args.user_home):
-        return 0
 
     require_file(config["frontend_translation"])
     require_file(config["frontend_hardcoded"])

@@ -1304,7 +1304,7 @@ function Replace-FrontendHardcodedText {
         return @{ Text = $Text; Count = 0 }
     }
 
-    $pattern = '(?<![A-Za-z0-9_$])' + [System.Text.RegularExpressions.Regex]::Escape($Source) + '(?![A-Za-z0-9_$])'
+    $pattern = '(?<quote>["''`])' + [System.Text.RegularExpressions.Regex]::Escape($Source) + '\k<quote>'
     $script:__frontendReplacementCount = 0
     $patched = [System.Text.RegularExpressions.Regex]::Replace(
         $Text,
@@ -1312,7 +1312,8 @@ function Replace-FrontendHardcodedText {
         {
             param($match)
             $script:__frontendReplacementCount += 1
-            return $Target
+            $quote = $match.Groups["quote"].Value
+            return "$quote$Target$quote"
         }
     )
     $count = $script:__frontendReplacementCount
@@ -1390,10 +1391,47 @@ function Get-OnlineDomTranslationScript {
     Write-Host "  serializing online DOM translation script" -ForegroundColor DarkGray
     $mappingJson = $Mapping | ConvertTo-Json -Compress -Depth 100
     $languageJson = $Language | ConvertTo-Json -Compress
+    if ($Language -eq "zh-CN") {
+        $selectedText = "已选择 `$1 项"
+        $deleteSelectedText = "删除 `$1 个所选项目"
+    } else {
+        $selectedText = "已選擇 `$1 項"
+        $deleteSelectedText = "刪除 `$1 個所選項目"
+    }
+    $selectedTextJson = $selectedText | ConvertTo-Json -Compress
+    $deleteSelectedTextJson = $deleteSelectedText | ConvertTo-Json -Compress
     $template = @'
-(()=>{try{const L=__LANGUAGE__,M=__MAPPING__;localStorage.setItem("spa:locale",L);document.documentElement&&document.documentElement.setAttribute("lang",L);const N=s=>(s||"").replace(/\s+/g," ").trim();const G=[[/^Morning, (.+)$/,"早上好，$1"],[/^Good morning, (.+)$/,"早上好，$1"],[/^Afternoon, (.+)$/,"下午好，$1"],[/^Good afternoon, (.+)$/,"下午好，$1"],[/^Evening, (.+)$/,"晚上好，$1"],[/^Good evening, (.+)$/,"晚上好，$1"],[/^It's late-night (.+)$/,"夜深了，$1"],[/^Good night, (.+)$/,"晚安，$1"],[/^Delete (\d+) chat$/,"删除 $1 个聊天"],[/^Delete (\d+) chats$/,"删除 $1 个聊天"],[/^Move (\d+) chat to a project$/,"将 $1 个聊天移至项目"],[/^Move (\d+) chats to a project$/,"将 $1 个聊天移至项目"],[/^Connection needs (\d+) field$/,"连接还需要填写 $1 个字段"],[/^Connection needs (\d+) fields$/,"连接还需要填写 $1 个字段"],[/^needs (\d+) field$/,"还需要填写 $1 个字段"],[/^needs (\d+) fields$/,"还需要填写 $1 个字段"],[/^Are you sure you want to delete (\d+) chat\? This cannot be undone\.$/,"你确定要删除 $1 个聊天吗？此操作无法撤消。"],[/^Are you sure you want to delete (\d+) chats\? This cannot be undone\.$/,"你确定要删除 $1 个聊天吗？此操作无法撤消。"],[/^Are you sure you want to permanently delete this chat\? This cannot be undone\.$/,"你确定要永久删除此聊天吗？此操作无法撤消。"],[/^Are you sure you want to permanently delete these chats\? This cannot be undone\.$/,"你确定要永久删除这些聊天吗？此操作无法撤消。"]];const R=s=>{const n=N(s);if(M[n])return M[n];for(const [r,t] of G){const m=n.match(r);if(m)return t.replace("$1",m[1])}};const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]);function T(){try{const b=document.body||document.documentElement;if(!b)return;const w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT,{acceptNode(n){const p=n.parentElement;if(!p||X.has(p.tagName)||!R(n.nodeValue))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});let n;while(n=w.nextNode()){const v=R(n.nodeValue);if(v)n.nodeValue=v}document.querySelectorAll("[aria-label],[title],[placeholder],input,textarea").forEach(e=>{["aria-label","title","placeholder","value"].forEach(a=>{try{if(a==="value"&&!(e.matches("input[type=button],input[type=submit]")))return;const v=e.getAttribute?e.getAttribute(a):e[a];const t=R(v);if(t){if(e.setAttribute)e.setAttribute(a,t);else e[a]=t}}catch{}})});document.querySelectorAll("a").forEach(e=>{try{const r=e.getBoundingClientRect(),txt=N(e.textContent);if(txt==="Claude"&&r.left<100&&r.top<100)e.style.visibility="hidden"}catch{}})}catch{}}T();new MutationObserver(()=>{clearTimeout(window.__claudeZhDomTimer);window.__claudeZhDomTimer=setTimeout(T,30)}).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true});}catch(e){}})()
+(()=>{try{
+const L=__LANGUAGE__,M=__MAPPING__,ST=__SELECTED_TEXT__,DST=__DELETE_SELECTED_TEXT__;
+localStorage.setItem("spa:locale",L);
+document.documentElement&&document.documentElement.setAttribute("lang",L);
+const N=s=>(s||"").replace(/\s+/g," ").trim();
+const G=[
+[/^Morning, (.+)$/,"早上好，$1"],[/^Good morning, (.+)$/,"早上好，$1"],
+[/^Afternoon, (.+)$/,"下午好，$1"],[/^Good afternoon, (.+)$/,"下午好，$1"],
+[/^Evening, (.+)$/,"晚上好，$1"],[/^Good evening, (.+)$/,"晚上好，$1"],
+[/^It's late-night (.+)$/,"夜深了，$1"],[/^Good night, (.+)$/,"晚安，$1"],
+[/^Delete (\d+) chat$/,"删除 $1 个聊天"],[/^Delete (\d+) chats$/,"删除 $1 个聊天"],
+[/^Move (\d+) chat to a project$/,"将 $1 个聊天移至项目"],[/^Move (\d+) chats to a project$/,"将 $1 个聊天移至项目"],
+[/^Connection needs (\d+) field$/,"连接还需要填写 $1 个字段"],[/^Connection needs (\d+) fields$/,"连接还需要填写 $1 个字段"],
+[/^needs (\d+) field$/,"还需要填写 $1 个字段"],[/^needs (\d+) fields$/,"还需要填写 $1 个字段"],
+[/^Are you sure you want to delete (\d+) chat\? This cannot be undone\.$/,"你确定要删除 $1 个聊天吗？此操作无法撤消。"],
+[/^Are you sure you want to delete (\d+) chats\? This cannot be undone\.$/,"你确定要删除 $1 个聊天吗？此操作无法撤消。"],
+[/^Are you sure you want to permanently delete this chat\? This cannot be undone\.$/,"你确定要永久删除此聊天吗？此操作无法撤消。"],
+[/^Are you sure you want to permanently delete these chats\? This cannot be undone\.$/,"你确定要永久删除这些聊天吗？此操作无法撤消。"],
+[/^(\d+) selected$/,ST],
+[/^Delete (\d+) selected item$/,DST],
+[/^Delete (\d+) selected items$/,DST],
+[/^Mon$/,"周一"],[/^Tue$/,"周二"],[/^Wed$/,"周三"],[/^Thu$/,"周四"],[/^Fri$/,"周五"],[/^Sat$/,"周六"],[/^Sun$/,"周日"]
+];
+const R=s=>{const n=N(s);if(M[n])return M[n];for(const [r,t] of G){const m=n.match(r);if(m)return t.replace("$1",m[1])}};
+const X=new Set(["SCRIPT","STYLE","NOSCRIPT"]);
+function T(){try{const b=document.body||document.documentElement;if(!b)return;const w=document.createTreeWalker(b,NodeFilter.SHOW_TEXT,{acceptNode(n){const p=n.parentElement;if(!p||X.has(p.tagName)||!R(n.nodeValue))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT}});let n;while(n=w.nextNode()){const v=R(n.nodeValue);if(v)n.nodeValue=v}document.querySelectorAll("[aria-label],[title],[placeholder],input,textarea").forEach(e=>{["aria-label","title","placeholder","value"].forEach(a=>{try{if(a==="value"&&!(e.matches("input[type=button],input[type=submit]")))return;let v=e.getAttribute?e.getAttribute(a):void 0;if(v==null&&a in e)v=e[a];const t=R(v);if(t){if(e.setAttribute)e.setAttribute(a,t);try{if(a in e)e[a]=t}catch{}}}catch{}})});document.querySelectorAll("a").forEach(e=>{try{const r=e.getBoundingClientRect(),txt=N(e.textContent);if(txt==="Claude"&&r.left<100&&r.top<100)e.style.visibility="hidden"}catch{}})}catch{}}
+T();
+new MutationObserver(()=>{clearTimeout(window.__claudeZhDomTimer);window.__claudeZhDomTimer=setTimeout(T,30)}).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true});
+}catch(e){}})()
 '@
-    return $template.Replace("__LANGUAGE__", $languageJson).Replace("__MAPPING__", $mappingJson)
+    return $template.Replace("__LANGUAGE__", $languageJson).Replace("__MAPPING__", $mappingJson).Replace("__SELECTED_TEXT__", $selectedTextJson).Replace("__DELETE_SELECTED_TEXT__", $deleteSelectedTextJson)
 }
 
 function Remove-ExistingOnlineDomTranslationPatch {
@@ -2251,38 +2289,6 @@ function Set-ThirdPartyAutoUpdates {
     }
 }
 
-function Test-ThirdPartyApiConfigExists {
-    foreach ($configLibrary in @(Get-ThirdPartyConfigLibraryPaths)) {
-        if (-not (Test-Path $configLibrary -PathType Container)) {
-            continue
-        }
-
-        $entries = @(Get-ChildItem $configLibrary -Force -ErrorAction SilentlyContinue | Select-Object -First 1)
-        if ($entries.Count -gt 0) {
-            return $true
-        }
-    }
-    return $false
-}
-
-function Confirm-InstallWithoutThirdPartyApiConfig {
-    if (Test-ThirdPartyApiConfigExists) {
-        return $true
-    }
-
-    while ($true) {
-        $selection = (Read-Host "未配置第三方API，程序运行后无效，请参照github上readme修改，是否继续配置？ [y/n]").Trim()
-        switch -Regex ($selection) {
-            '^[Yy]$' { return $true }
-            '^[Nn]$' {
-                Write-Host "已取消配置，未修改 Claude Desktop。" -ForegroundColor Yellow
-                return $false
-            }
-            default { Write-Host "请输入 y 或 n。" -ForegroundColor Yellow }
-        }
-    }
-}
-
 function Remove-LanguageFiles {
     param([string]$ResourcesPath)
 
@@ -2335,11 +2341,11 @@ function Install-WindowsLanguagePack {
     try {
         Write-Step "[1/9] 检查安装模式"
         if ($PatchMode -eq "safe") {
-            Write-Host "  Cowork 兼容模式：跳过第三方 API 配置检查。" -ForegroundColor Green
+            Write-Host "  Cowork 兼容模式：无需第三方 API 配置检查。" -ForegroundColor Green
         } elseif ($PatchMode -eq "official") {
-            Write-Host "  官方账号登录模式：跳过第三方 API 配置检查。" -ForegroundColor Green
-        } elseif (-not (Confirm-InstallWithoutThirdPartyApiConfig)) {
-            return
+            Write-Host "  官方账号登录模式：无需第三方 API 配置检查。" -ForegroundColor Green
+        } else {
+            Write-Host "  第三方 API 登录模式：无需第三方 API 配置检查。" -ForegroundColor Green
         }
 
         Write-Step "[2/9] 检查语言资源"

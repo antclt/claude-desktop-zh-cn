@@ -716,6 +716,34 @@
     "LJt=\"未命名\""
   ],
   [
+    "Active",
+    "活跃"
+  ],
+  [
+    "Archived",
+    "已归档"
+  ],
+  [
+    "All",
+    "全部"
+  ],
+  [
+    "Untitled",
+    "未命名"
+  ],
+  [
+    "Search chats...",
+    "搜索聊天..."
+  ],
+  [
+    "Search chats…",
+    "搜索聊天..."
+  ],
+  [
+    "Delete selected",
+    "删除所选"
+  ],
+  [
     "Record Memory Trace (auto-stop)",
     "记录内存跟踪 (自动)"
   ],
