@@ -112,7 +112,9 @@ if (-not (Test-ResourcesPathExists $installPath)) {
 }
 
 # 创建一次性管理员计划任务来重新应用补丁
-$patcherScript = Join-Path $PSScriptRoot "install_windows.ps1"
+# 从版本记录中获取脚本目录（由安装时写入），回退到 $PSScriptRoot
+$scriptDir = if ($recorded.scriptDir) { $recorded.scriptDir } else { $PSScriptRoot }
+$patcherScript = Join-Path $scriptDir "install_windows.ps1"
 if (-not (Test-Path $patcherScript)) {
     Write-WatcherLog "未找到 install_windows.ps1: $patcherScript"
     exit 0

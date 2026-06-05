@@ -2353,11 +2353,11 @@ function Stop-ClaudeProcessesGracefully {
         return $true
     }
 
-    # 第一层：使用 taskkill /T 发送 WM_CLOSE 消息，允许 Electron 执行 app.quit() 和数据库 flush
+    # 第一层：发送 WM_CLOSE 消息（不带 /F），允许 Electron 执行 app.quit() 和数据库 flush
     foreach ($proc in $procs) {
         Write-Host "  正在请求 Claude Desktop 优雅退出 (PID $($proc.Id))..." -ForegroundColor DarkGray
         try {
-            $null = & taskkill /PID $proc.Id /T 2>&1
+            $null = & taskkill /PID $proc.Id 2>&1
         } catch {
             # taskkill 失败，继续等待超时后强制终止
         }
@@ -2381,12 +2381,12 @@ function Stop-ClaudeProcessesGracefully {
         $procs = $stillRunning
     }
 
-    # 第二层：超时后才回退到 Stop-Process -Force
+    # 第二层：超时后才回退到 taskkill /T /F 强制终止进程树
     Write-Host "  优雅退出超时（${TimeoutSeconds}秒），强制终止剩余进程..." -ForegroundColor DarkYellow
     foreach ($proc in $procs) {
         if (-not $proc.HasExited) {
             try {
-                Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+                $null = & taskkill /PID $proc.Id /T /F 2>&1
             } catch {
                 # 已退出或无法终止
             }
@@ -2399,7 +2399,9 @@ function Stop-ClaudeProcessesGracefully {
 
 function Stop-ClaudeProcesses {
     $killed = Stop-ClaudeProcessesGracefully -TimeoutSeconds 10
-    if (-not $killed) {
+    if ($killed) {
+        Write-Host "  Claude Desktop 已停止" -ForegroundColor Green
+    } else {
         Write-Host "  已强制停止 Claude Desktop" -ForegroundColor Green
     }
 }
@@ -2459,6 +2461,7 @@ function Save-PatchedVersion {
         patchTime    = (Get-Date -Format "o")
         patchMode    = $PatchMode
         language     = $Language
+        scriptDir    = (Split-Path -Parent $MyInvocation.MyCommand.Path)
     }
     $path = Join-Path $script:PatchedVersionDir "patched-version.json"
     $info | ConvertTo-Json -Depth 5 | Set-Content $path -Encoding UTF8
@@ -2502,11 +2505,11 @@ function Register-UpdateWatcher {
             Unregister-ScheduledTask -TaskName $script:WatcherTaskName -Confirm:$false -ErrorAction SilentlyContinue
         }
 
-        $logonTrigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-        $repetition = $logonTrigger.Repetition
-        $repetition.Interval = "PT30M"
-        $repetition.Duration = "P1D"
-        $repetition.StopAtDurationEnd = $false
+        # 使用 -Once trigger + Repetition，比 -AtLogOn 的 Repetition 赋值更可靠
+        $logonTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1)
+        $logonTrigger.Repetition.Interval = "PT30M"
+        $logonTrigger.Repetition.Duration = "P999D"
+        $logonTrigger.Repetition.StopAtDurationEnd = $false
 
         $action = New-ScheduledTaskAction `
             -Execute "powershell.exe" `
@@ -2545,31 +2548,6 @@ function Unregister-UpdateWatcher {
     catch {
         Write-Host "  [警告] 移除计划任务失败: $($_.Exception.Message)" -ForegroundColor DarkYellow
     }
-}
-
-function Invoke-ReapplyPatch {
-    param(
-        [string]$PatchMode,
-        [string]$Language
-    )
-
-    $scriptPath = $MyInvocation.MyCommand.Path
-    if (-not $scriptPath) {
-        $scriptPath = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "install_windows.ps1"
-    }
-
-    $args = @(
-        "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $scriptPath,
-        "-PatchMode", $PatchMode,
-        "-Language", $Language,
-        "-Action", "install"
-    )
-
-    $proc = Start-Process -FilePath "powershell.exe" -ArgumentList $args `
-        -Wait -PassThru -NoNewWindow -RedirectStandardOutput "$env:TEMP\claude-zh-reapply-stdout.log" `
-        -RedirectStandardError "$env:TEMP\claude-zh-reapply-stderr.log"
-
-    return $proc.ExitCode -eq 0
 }
 
 function Install-WindowsLanguagePack {
