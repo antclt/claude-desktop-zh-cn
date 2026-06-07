@@ -1340,26 +1340,32 @@ fn platform_restore_patch(_logger: &dyn LogSink) -> Result<()> {
 fn restore_windows_backup(resources: &Path, logger: &dyn LogSink) -> Result<()> {
     let root = resources.join(".zh-cn-backups");
     logger.info(format!("正在查找 Windows 资源备份: {}", root.display()));
-    let mut backups: Vec<PathBuf> = fs::read_dir(&root)?
+    let Some(entries) = fs::read_dir(&root).ok() else {
+        logger.warn("没有找到 Windows 备份，跳过 bundle 恢复。");
+        return Ok(());
+    };
+    let mut backups: Vec<PathBuf> = entries
         .flatten()
         .map(|entry| entry.path())
         .filter(|path| path.is_dir())
         .collect();
     backups.sort();
-    let Some(backup) = backups.first() else {
+    let Some(backup) = backups.pop() else {
         logger.warn("没有找到 Windows 备份，跳过 bundle 恢复。");
         return Ok(());
     };
     logger.info(format!("将恢复 Windows 资源备份: {}", backup.display()));
-    for entry in WalkDir::new(backup) {
+    for entry in WalkDir::new(&backup) {
         let entry = entry?;
         if !entry.file_type().is_file() {
             continue;
         }
-        let rel = entry.path().strip_prefix(backup).unwrap();
+        let rel = entry.path().strip_prefix(&backup).unwrap();
         copy_file(entry.path(), &resources.join(rel))?;
         logger.info(format!("已恢复: {}", rel.display()));
     }
+    remove_path(&root)?;
+    logger.info("已清理 Windows 资源备份目录。");
     Ok(())
 }
 
