@@ -167,6 +167,11 @@ function App() {
       }
       setBusy(null);
       await refresh();
+      if (finished.ok) {
+        window.alert(`${finished.action} 已完成，可以继续操作。`);
+      } else {
+        window.alert(`${finished.action} 失败：${finished.error ?? "请查看执行日志。"}`);
+      }
     },
     [appendLog, refresh],
   );
@@ -230,10 +235,12 @@ function App() {
         await fn();
         appendLog({ level: "info", message: `完成：${name}` });
         await refresh();
+        window.alert(`${name} 已完成，可以继续操作。`);
       } catch (error) {
         const message = String(error);
         setLastError(message);
         appendLog({ level: "error", message });
+        window.alert(`${name} 失败：${message}`);
       } finally {
         setBusy(null);
       }
@@ -264,6 +271,7 @@ function App() {
         setLastError(message);
         setBusy(null);
         appendLog({ level: "error", message });
+        window.alert(`${name} 失败：${message}`);
       }
     },
     [appendLog],

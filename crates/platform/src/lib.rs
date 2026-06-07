@@ -24,6 +24,8 @@ use std::{
 use uuid::Uuid;
 #[cfg(any(target_os = "macos", windows))]
 use walkdir::WalkDir;
+#[cfg(windows)]
+use windows::Win32::Globalization::{MultiByteToWideChar, CP_OEMCP, MULTI_BYTE_TO_WIDE_CHAR_FLAGS};
 
 #[cfg(windows)]
 const WATCHER_TASK: &str = "ClaudeDesktopZhCn-UpdateWatcher";
@@ -69,8 +71,8 @@ pub fn run_command(mut command: Command, logger: &dyn LogSink, label: &str) -> R
         .stdout(Stdio::piped())
         .output()?;
     let mut text = String::new();
-    text.push_str(&String::from_utf8_lossy(&output.stdout));
-    text.push_str(&String::from_utf8_lossy(&output.stderr));
+    text.push_str(&decode_command_output(&output.stdout));
+    text.push_str(&decode_command_output(&output.stderr));
     for line in text.lines() {
         if !line.trim().is_empty() {
             logger.info(line);
@@ -90,6 +92,44 @@ fn hide_command_window(command: &mut Command) {
 
 #[cfg(not(windows))]
 fn hide_command_window(_command: &mut Command) {}
+
+fn decode_command_output(bytes: &[u8]) -> String {
+    if let Ok(text) = std::str::from_utf8(bytes) {
+        text.to_string()
+    } else {
+        decode_platform_command_output(bytes)
+    }
+}
+
+#[cfg(windows)]
+fn decode_platform_command_output(bytes: &[u8]) -> String {
+    if bytes.is_empty() {
+        return String::new();
+    }
+    unsafe {
+        let needed = MultiByteToWideChar(CP_OEMCP, MULTI_BYTE_TO_WIDE_CHAR_FLAGS(0), bytes, None);
+        if needed <= 0 {
+            return String::from_utf8_lossy(bytes).into_owned();
+        }
+        let mut wide = vec![0u16; needed as usize];
+        let written = MultiByteToWideChar(
+            CP_OEMCP,
+            MULTI_BYTE_TO_WIDE_CHAR_FLAGS(0),
+            bytes,
+            Some(&mut wide),
+        );
+        if written <= 0 {
+            String::from_utf8_lossy(bytes).into_owned()
+        } else {
+            String::from_utf16_lossy(&wide[..written as usize])
+        }
+    }
+}
+
+#[cfg(not(windows))]
+fn decode_platform_command_output(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).into_owned()
+}
 
 pub fn resource_candidates(tauri_resource_dir: Option<PathBuf>) -> Vec<PathBuf> {
     let mut out = Vec::new();
@@ -241,12 +281,12 @@ pub fn run_elevated_cli(
         if let Some(status) = child.try_wait()? {
             let _ = drain_jsonl_log(&log_path, offset, logger)?;
             let output = child.wait_with_output()?;
-            for line in String::from_utf8_lossy(&output.stdout).lines() {
+            for line in decode_command_output(&output.stdout).lines() {
                 if !line.trim().is_empty() {
                     logger.info(line);
                 }
             }
-            for line in String::from_utf8_lossy(&output.stderr).lines() {
+            for line in decode_command_output(&output.stderr).lines() {
                 if !line.trim().is_empty() {
                     logger.warn(line);
                 }
@@ -901,8 +941,8 @@ fn sign_macos_path(path: &Path) -> Result<()> {
     }
     if !output.status.success() {
         let mut text = String::new();
-        text.push_str(&String::from_utf8_lossy(&output.stdout));
-        text.push_str(&String::from_utf8_lossy(&output.stderr));
+        text.push_str(&decode_command_output(&output.stdout));
+        text.push_str(&decode_command_output(&output.stderr));
         return err(format!("codesign 失败: {}\n{text}", path.display()));
     }
     Ok(())
