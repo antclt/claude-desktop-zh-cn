@@ -28,7 +28,7 @@ select {
 .shell {
   width: min(980px, calc(100vw - 28px));
   margin: 0 auto;
-  padding: 22px 0;
+  padding: 18px 0;
 }
 
 .topbar {
@@ -36,7 +36,7 @@ select {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 .eyebrow {
@@ -52,7 +52,7 @@ h2 {
 }
 
 h1 {
-  font-size: 32px;
+  font-size: 28px;
   line-height: 1.15;
 }
 
@@ -71,9 +71,7 @@ svg {
 .small,
 .actions button,
 .primary,
-.selectField select,
-.segmented button,
-.mode {
+.selectField select {
   border: 1px solid #cbd7ce;
   background: #fbfcfa;
   color: #17211c;
@@ -84,15 +82,15 @@ svg {
 .iconButton {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
 }
 
 .statusBand {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .statusItem,
@@ -109,7 +107,7 @@ svg {
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding: 18px;
+  padding: 14px;
 }
 
 .statusItem strong,
@@ -121,7 +119,7 @@ svg {
 }
 
 .statusItem strong {
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .statusItem span {
@@ -132,8 +130,8 @@ svg {
 .statusIcon {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   border-radius: 8px;
   background: #edf2ed;
   color: #17211c;
@@ -166,11 +164,11 @@ svg {
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 0.78fr);
-  gap: 18px;
+  gap: 14px;
 }
 
 .panel {
-  padding: 20px;
+  padding: 18px;
 }
 
 .panelHeader {
@@ -178,29 +176,14 @@ svg {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 18px;
-}
-
-.panelHeader span {
-  color: #6a756f;
-  font-weight: 700;
-}
-
-.field {
-  margin-bottom: 18px;
-}
-
-.field > label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 800;
+  margin-bottom: 16px;
 }
 
 .controlGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .selectField {
@@ -215,7 +198,7 @@ svg {
 
 .selectField select {
   width: 100%;
-  min-height: 46px;
+  min-height: 44px;
   padding: 0 12px;
   font-weight: 800;
   outline: none;
@@ -224,75 +207,6 @@ svg {
 .selectField select:focus {
   border-color: #22784b;
   box-shadow: 0 0 0 3px rgba(34, 120, 75, 0.12);
-}
-
-.selectHint {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 34px;
-  margin-bottom: 14px;
-  color: #59655f;
-}
-
-.selectHint span {
-  min-height: 30px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: #f0f4f1;
-  font-weight: 700;
-}
-
-.segmented {
-  display: grid;
-  gap: 10px;
-}
-
-.segmented.three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.segmented button,
-.mode {
-  min-height: 76px;
-  padding: 14px;
-  text-align: left;
-}
-
-.segmented strong,
-.mode strong {
-  display: block;
-  font-weight: 850;
-}
-
-.segmented span,
-.mode span {
-  display: block;
-  color: #65736b;
-  margin-top: 6px;
-}
-
-.selected {
-  border-color: #22784b !important;
-  background: #edf7f0 !important;
-}
-
-.modeList {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.warningLine {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #f0f4f1;
-  color: #59655f;
-  margin-bottom: 14px;
 }
 
 .toggles {
@@ -315,7 +229,7 @@ svg {
   justify-content: center;
   gap: 10px;
   width: 100%;
-  min-height: 58px;
+  min-height: 54px;
   background: #1f6f43;
   color: #fff;
   border-color: #1f6f43;
@@ -345,7 +259,7 @@ svg {
 
 .actions {
   display: grid;
-  gap: 10px;
+  gap: 9px;
 }
 
 .actions button,
@@ -353,7 +267,7 @@ svg {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 46px;
+  min-height: 44px;
   padding: 0 14px;
   font-weight: 800;
 }
@@ -363,33 +277,8 @@ svg {
   width: 100%;
 }
 
-.facts {
-  display: grid;
-  gap: 10px;
-  margin: 18px 0 0;
-}
-
-.facts div {
-  display: grid;
-  grid-template-columns: 145px minmax(0, 1fr);
-  gap: 10px;
-}
-
-.facts dt {
-  color: #6a756f;
-  font-weight: 800;
-}
-
-.facts dd {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .logPanel {
-  margin-top: 18px;
+  margin-top: 14px;
   overflow: hidden;
 }
 
@@ -443,13 +332,7 @@ button:disabled {
 
   .statusBand,
   .grid,
-  .controlGrid,
-  .modeList,
-  .segmented.three {
-    grid-template-columns: 1fr;
-  }
-
-  .facts div {
+  .controlGrid {
     grid-template-columns: 1fr;
   }
 

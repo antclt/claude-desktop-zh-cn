@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -72,25 +72,15 @@ type GitHubRelease = {
 type Language = "zh-CN" | "zh-TW" | "zh-HK";
 type PatchMode = "safe" | "official";
 
-const languages: Array<{ value: Language; label: string; hint: string }> = [
-  { value: "zh-CN", label: "简体中文", hint: "中国大陆" },
-  { value: "zh-TW", label: "繁体中文", hint: "中国台湾" },
-  { value: "zh-HK", label: "繁体中文", hint: "中国香港" },
+const languages: Array<{ value: Language; label: string }> = [
+  { value: "zh-CN", label: "简体中文" },
+  { value: "zh-TW", label: "繁体中文（台湾）" },
+  { value: "zh-HK", label: "繁体中文（香港）" },
 ];
 
-const modes: Array<{ value: PatchMode; label: string; hint: string; risk: string }> = [
-  {
-    value: "safe",
-    label: "第三方 API",
-    hint: "轻量资源汉化，保持 Cowork / 沙箱兼容",
-    risk: "适合第三方 API、截图工作区或沙箱用户。",
-  },
-  {
-    value: "official",
-    label: "官方账号登录",
-    hint: "启用在线页面显示层汉化",
-    risk: "会修改 app.asar，Windows 签名状态会改变。",
-  },
+const modes: Array<{ value: PatchMode; label: string }> = [
+  { value: "safe", label: "第三方 API" },
+  { value: "official", label: "官方账号登录" },
 ];
 
 function statusText(env: EnvironmentReport | null) {
@@ -114,6 +104,12 @@ function waitForPaint() {
 
 function createActionId(name: string) {
   return `${name}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function compactPath(path?: string | null) {
+  if (!path) return "-";
+  const parts = path.split(/[\\/]+/).filter(Boolean);
+  return parts[parts.length - 1] ?? path;
 }
 
 function normalizeVersion(version: string) {
@@ -242,8 +238,6 @@ function App() {
   }, [logs]);
 
   const canRun = Boolean(env?.resourcesOk && env?.claudePath && !busy);
-  const selectedLanguage = useMemo(() => languages.find((item) => item.value === language), [language]);
-  const selectedMode = useMemo(() => modes.find((item) => item.value === mode), [mode]);
   const logText = logs.map((item) => `[${levelLabel(item.level)}] ${item.message}`).join("\n");
 
   const runAction = useCallback(
@@ -364,7 +358,7 @@ function App() {
           <span className="statusIcon"><Wrench /></span>
           <div>
             <strong>{env?.installKind ?? "未知安装类型"}</strong>
-            <span>{env?.claudePath ?? "未检测到安装路径"}</span>
+            <span title={env?.claudePath ?? undefined}>{env?.claudePath ? compactPath(env.claudePath) : "未检测到安装路径"}</span>
           </div>
         </div>
         <div className="statusItem">
@@ -392,7 +386,6 @@ function App() {
         <section className="panel">
           <div className="panelHeader">
             <h2>安装补丁</h2>
-            <span>语言、模式、启动选项</span>
           </div>
 
           <div className="controlGrid">
@@ -401,7 +394,7 @@ function App() {
               <select value={language} onChange={(event) => setLanguage(event.target.value as Language)} disabled={Boolean(busy)}>
                 {languages.map((item) => (
                   <option key={item.value} value={item.value}>
-                    {item.label} · {item.hint}
+                    {item.label}
                   </option>
                 ))}
               </select>
@@ -417,12 +410,6 @@ function App() {
                 ))}
               </select>
             </label>
-          </div>
-
-          <div className="selectHint">
-            <span>{selectedLanguage?.hint}</span>
-            <span>{selectedMode?.hint}</span>
-            <span>{selectedMode?.risk}</span>
           </div>
 
           <div className="toggles">
@@ -462,7 +449,6 @@ function App() {
         <section className="panel">
           <div className="panelHeader">
             <h2>维护操作</h2>
-            <span>恢复、更新、skills 同步</span>
           </div>
 
           <div className="actions">
@@ -492,25 +478,6 @@ function App() {
               删除 skills 同步
             </button>
           </div>
-
-          <dl className="facts">
-            <div>
-              <dt>资源目录</dt>
-              <dd>{env?.resourcesDir ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>Claude resources</dt>
-              <dd>{env?.resourcesPath ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>skills 来源</dt>
-              <dd>{env?.ccSwitchSkillsDir ?? "-"}</dd>
-            </div>
-            <div>
-              <dt>skills plugin</dt>
-              <dd>{env?.skillsPluginRoot ?? "-"}</dd>
-            </div>
-          </dl>
         </section>
       </div>
 
