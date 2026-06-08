@@ -40,16 +40,28 @@ fn quit_claude(logger: &dyn LogSink) {
 
 #[cfg(windows)]
 fn quit_claude(logger: &dyn LogSink) {
-    logger.info("正在强制关闭 Claude Desktop 进程。");
-    let _ = run_command(
-        {
-            let mut cmd = Command::new("taskkill");
-            cmd.args(["/IM", "Claude.exe", "/F"]);
-            cmd
-        },
-        logger,
-        "关闭 Claude Desktop",
-    );
+    logger.info("正在关闭 Claude Desktop 进程。");
+    // 使用 PowerShell 精确匹配已知安装路径，避免误杀 Claude Code CLI
+    let script = r#"
+Get-Process -Name 'Claude','claude' -ErrorAction SilentlyContinue |
+  Where-Object { try { $_.MainModule.FileName } catch { $null } } |
+  Where-Object {
+    $_.MainModule.FileName -like '*\WindowsApps\Claude_*' -or
+    $_.MainModule.FileName -like '*\AnthropicClaude\app-*\*'
+  } |
+  Stop-Process -Force -ErrorAction SilentlyContinue
+"#;
+    let mut cmd = Command::new("powershell.exe");
+    cmd.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        script,
+    ]);
+    hide_command_window(&mut cmd);
+    let _ = run_command(cmd, logger, "关闭 Claude Desktop");
 }
 
 #[cfg(not(any(target_os = "macos", windows)))]
@@ -505,10 +517,8 @@ pub(crate) fn platform_install_patch(
         logger,
     )?;
     logger.info("Windows resources 补丁写入完成。");
-    if req.mode != "safe" {
-        logger.info("开始同步 Windows Claude.exe app.asar 完整性标记。");
-        sync_windows_exe_asar_integrity(&target_resources, logger)?;
-    }
+    logger.info("开始同步 Windows Claude.exe app.asar 完整性标记。");
+    sync_windows_exe_asar_integrity(&target_resources, logger)?;
     logger.info("开始写入 Claude 语言配置。");
     for config in claude_config_paths() {
         set_config_locale(&config, &req.language, logger)?;
