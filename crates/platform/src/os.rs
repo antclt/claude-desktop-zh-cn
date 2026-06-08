@@ -478,6 +478,10 @@ pub(crate) fn platform_install_patch(
         return Ok(());
     }
     quit_claude(logger);
+    // WindowsApps 目录由 TrustedInstaller 拥有，管理员默认无写入权限
+    if target_resources.starts_with(r"C:\Program Files\WindowsApps") {
+        acquire_windowsapps_permission(&target_resources, logger)?;
+    }
     let backup_base = target_resources
         .join(".zh-cn-backups")
         .join(Local::now().format("%Y%m%d-%H%M%S").to_string());
@@ -514,6 +518,24 @@ pub(crate) fn platform_install_patch(
     if req.launch_after {
         launch_claude(&app, logger);
     }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn acquire_windowsapps_permission(path: &Path, logger: &dyn LogSink) -> Result<()> {
+    let path_str = path.display().to_string();
+    logger.info("正在获取 WindowsApps 目录写入权限。");
+    // takeown: 获取目录所有权
+    let mut takeown = Command::new("takeown");
+    hide_command_window(&mut takeown);
+    takeown.args(["/F", &path_str, "/R", "/A", "/D", "Y"]);
+    let _ = run_command(takeown, logger, "获取目录所有权");
+    // icacls: 授予管理员完全控制
+    let mut icacls = Command::new("icacls");
+    hide_command_window(&mut icacls);
+    icacls.args([&path_str, "/grant", "Administrators:(OI)(CI)F", "/T", "/C"]);
+    let _ = run_command(icacls, logger, "授予管理员写入权限");
+    logger.info("WindowsApps 目录权限已更新。");
     Ok(())
 }
 
