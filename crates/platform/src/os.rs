@@ -10,8 +10,11 @@ use claude_zh_core::{
 use std::{
     env,
     fs,
+    io::ErrorKind,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    thread,
+    time::Duration,
 };
 use walkdir::WalkDir;
 
@@ -43,18 +46,18 @@ fn windows_claude_stop_script() -> &'static str {
     r#"
 function Get-ClaudeDesktopProcessTree {
   $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -in @('Claude.exe','claude.exe') })
+    Where-Object {
+      $_.ExecutablePath -and
+      (
+        $_.ExecutablePath -like '*\WindowsApps\Claude_*' -or
+        $_.ExecutablePath -like '*\AnthropicClaude\app-*\*'
+      )
+    })
   if (-not $all) {
     return @()
   }
 
-  $anchors = @($all | Where-Object {
-    $_.ExecutablePath -and
-    (
-      $_.ExecutablePath -like '*\WindowsApps\Claude_*' -or
-      $_.ExecutablePath -like '*\AnthropicClaude\app-*\*'
-    )
-  })
+  $anchors = @($all)
   if (-not $anchors) {
     return @()
   }
@@ -738,7 +741,7 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
 }
 
 #[cfg(windows)]
-fn sync_dir_exact(src: &Path, dst: &Path) -> Result<()> {
+fn sync_dir_exact(src: &Path, dst: &Path, logger: &dyn LogSink) -> Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(dst)? {
         let entry = entry?;
@@ -753,9 +756,15 @@ fn sync_dir_exact(src: &Path, dst: &Path) -> Result<()> {
         let source = entry.path();
         let target = dst.join(entry.file_name());
         if entry.file_type()?.is_dir() {
-            sync_dir_exact(&source, &target)?;
+            sync_dir_exact(&source, &target, logger)?;
         } else if entry.file_type()?.is_file() {
-            copy_file(&source, &target)?;
+            copy_windows_file_with_retries(&source, &target, logger, "同步资源文件").map_err(|error| {
+                CoreError::Message(format!(
+                    "同步资源文件失败: {} -> {}: {error}",
+                    source.display(),
+                    target.display()
+                ))
+            })?;
         }
     }
     Ok(())
@@ -792,6 +801,56 @@ fn cleanup_windows_restore_artifacts(app_dir: &Path, logger: &dyn LogSink) -> Re
 fn try_cleanup_windows_restore_artifacts(app_dir: &Path, logger: &dyn LogSink) {
     if let Err(error) = cleanup_windows_restore_artifacts(app_dir, logger) {
         logger.warn(format!("清理旧的 Windows 恢复临时文件失败，将保留残留以避免影响主流程: {error}"));
+    }
+}
+
+#[cfg(windows)]
+fn copy_windows_file_with_retries(
+    src: &Path,
+    dst: &Path,
+    logger: &dyn LogSink,
+    context: &str,
+) -> Result<()> {
+    const RETRY_DELAYS_MS: [u64; 6] = [150, 300, 500, 800, 1200, 1800];
+    let mut last_error = None;
+
+    for (attempt, delay_ms) in RETRY_DELAYS_MS.iter().enumerate() {
+        match copy_file(src, dst) {
+            Ok(()) => {
+                if attempt > 0 {
+                    logger.info(format!(
+                        "{context} 在第 {} 次重试后成功。",
+                        attempt + 1
+                    ));
+                }
+                return Ok(());
+            }
+            Err(CoreError::Io(error))
+                if matches!(
+                    error.kind(),
+                    ErrorKind::PermissionDenied | ErrorKind::WouldBlock
+                ) =>
+            {
+                logger.warn(format!(
+                    "{context} 失败（第 {} 次）: {error}；等待 {delay_ms}ms 后重试。",
+                    attempt + 1
+                ));
+                last_error = Some(CoreError::Io(error));
+                quit_claude(logger);
+                thread::sleep(Duration::from_millis(*delay_ms));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    match copy_file(src, dst) {
+        Ok(()) => Ok(()),
+        Err(error) => Err(CoreError::Message(format!(
+            "{context} 最终失败: {} -> {}: {}",
+            src.display(),
+            dst.display(),
+            last_error.unwrap_or(error)
+        ))),
     }
 }
 
@@ -912,8 +971,13 @@ fn restore_windows_backup_from_snapshot(
     if !backup_resources.is_dir() || !backup_exe.is_file() {
         return err(format!("纯净备份不完整: {}", snapshot.display()));
     }
-    sync_dir_exact(&backup_resources, resources)?;
-    copy_file(&backup_exe, &app_dir.join("Claude.exe"))?;
+    sync_dir_exact(&backup_resources, resources, logger)?;
+    copy_windows_file_with_retries(
+        &backup_exe,
+        &app_dir.join("Claude.exe"),
+        logger,
+        "恢复 Claude.exe",
+    )?;
     try_cleanup_windows_restore_artifacts(app_dir, logger);
     logger.info("已从包外纯净备份恢复官方文件。");
     Ok(())
@@ -1024,7 +1088,14 @@ mod tests {
         windowsapps_permission_targets,
     };
     use claude_zh_core::{now_millis, NoopLogger};
-    use std::{fs, path::Path};
+    use std::{
+        fs,
+        io::Write,
+        path::Path,
+        sync::Arc,
+        thread,
+        time::Duration,
+    };
 
     #[test]
     fn windowsapps_permissions_include_app_dir_for_exe_rewrite() {
@@ -1131,6 +1202,57 @@ mod tests {
     }
 
     #[test]
+    fn restore_windows_backup_from_snapshot_retries_when_exe_is_temporarily_locked() {
+        let root = std::env::temp_dir().join(format!(
+            "claude-zh-platform-restore-retry-{}",
+            now_millis()
+        ));
+        let _ = fs::remove_dir_all(&root);
+        let app_dir = root.join("app");
+        let resources = app_dir.join("resources");
+        let snapshot = root.join("snapshot");
+        fs::create_dir_all(&resources).unwrap();
+        fs::create_dir_all(snapshot.join("app").join("resources")).unwrap();
+        fs::write(app_dir.join("Claude.exe"), b"patched-exe").unwrap();
+        fs::write(resources.join("app.asar"), b"patched-asar").unwrap();
+        fs::write(
+            snapshot.join("app").join("Claude.exe"),
+            b"clean-exe-after-retry",
+        )
+        .unwrap();
+        fs::write(
+            snapshot.join("app").join("resources").join("app.asar"),
+            b"clean-asar",
+        )
+        .unwrap();
+
+        let exe_path = app_dir.join("Claude.exe");
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&exe_path)
+            .unwrap();
+        let writer = Arc::new(file);
+        let mut writer_clone = Arc::clone(&writer);
+        let hold = thread::spawn(move || {
+            writer_clone.write_all(b"").unwrap();
+            thread::sleep(Duration::from_millis(650));
+        });
+
+        restore_windows_backup_from_snapshot(&snapshot, &app_dir, &resources, &NoopLogger)
+            .unwrap();
+        hold.join().unwrap();
+
+        assert_eq!(
+            fs::read(app_dir.join("Claude.exe")).unwrap(),
+            b"clean-exe-after-retry"
+        );
+        assert_eq!(fs::read(resources.join("app.asar")).unwrap(), b"clean-asar");
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn sync_dir_exact_removes_extra_entries_and_restores_expected_files() {
         let root = std::env::temp_dir().join(format!(
             "claude-zh-platform-sync-dir-exact-{}",
@@ -1147,7 +1269,7 @@ mod tests {
         fs::write(dst.join("extra.txt"), b"extra").unwrap();
         fs::write(dst.join("extra-dir").join("extra.txt"), b"extra").unwrap();
 
-        sync_dir_exact(&src, &dst).unwrap();
+        sync_dir_exact(&src, &dst, &NoopLogger).unwrap();
 
         assert_eq!(fs::read(dst.join("same.txt")).unwrap(), b"clean");
         assert_eq!(fs::read(dst.join("nested").join("keep.txt")).unwrap(), b"keep");
