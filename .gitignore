@@ -4,4 +4,16 @@ __pycache__/
 .venv/
 venv/
 *.log
+target/
+node_modules/
+dist/
+*.tmp
+apps/desktop/src-tauri/target/
+apps/desktop/dist/
+.codegraph/
+
+# 工具生成目录
+.claude/
+.omc/
+.understand-anything/
 
