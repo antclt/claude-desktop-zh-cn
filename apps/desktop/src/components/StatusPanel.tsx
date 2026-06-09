@@ -14,7 +14,7 @@ export function StatusPanel({ env, busy, lastError, onRefresh }: StatusPanelProp
     <>
       <header className="topbar">
         <div>
-          <div className="eyebrow">Claude Desktop 中文补丁 RS</div>
+          <div className="eyebrow">Claude-Zh</div>
           <h1>双端 Rust 安装器</h1>
         </div>
         <button className="iconButton" onClick={onRefresh} disabled={Boolean(busy)} title="重新检测">

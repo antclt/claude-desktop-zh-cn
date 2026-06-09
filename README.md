@@ -1,4 +1,4 @@
-# Claude Desktop 中文补丁 RS
+# Claude-Zh
 
 一个独立的 Rust/Tauri 双端重构项目，用于给 Claude Desktop 安装中文语言资源、恢复补丁、管理自动更新和同步 CC Switch skills。
 
