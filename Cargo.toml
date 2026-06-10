@@ -10,7 +10,7 @@ resolver = "2"
 version = "0.1.6"
 edition = "2021"
 authors = ["javaht"]
-license = "MIT"
+license = "AGPL-3.0-or-later"
 
 [workspace.dependencies]
 aho-corasick = "1.1.4"

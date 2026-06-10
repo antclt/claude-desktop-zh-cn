@@ -17,3 +17,18 @@ apps/desktop/dist/
 .omc/
 .understand-anything/
 
+# AI agent 工作笔记（仅本地保留，不入主仓）
+docs/superpowers/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS 临时文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
