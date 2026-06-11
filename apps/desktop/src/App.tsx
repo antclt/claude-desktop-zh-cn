@@ -4,12 +4,15 @@ import { ActionButtons } from "./components/ActionButtons";
 import { InstallOptions } from "./components/InstallOptions";
 import { LogPanel } from "./components/LogPanel";
 import { StatusPanel } from "./components/StatusPanel";
+import { TitleBar } from "./components/TitleBar";
 import { useActionRunner } from "./hooks/useActionRunner";
 import { useEnvironment } from "./hooks/useEnvironment";
 import { useResourceRelease } from "./hooks/useResourceRelease";
+import { useTheme } from "./hooks/useTheme";
 import type { ActionStarted, Language, PatchMode } from "./types";
 
 export default function App() {
+  useTheme(); // 跟随系统主题，无需消费返回值
   const { env, detectEnvironment } = useEnvironment();
   const {
     busy,
@@ -77,7 +80,9 @@ export default function App() {
   }, [setLogs]);
 
   return (
-    <main className="shell">
+    <div className="flex flex-col h-screen">
+      <TitleBar />
+      <main className="shell flex-1 overflow-y-auto">
       <StatusPanel env={env} busy={busy} lastError={lastError} onRefresh={handleRefresh} />
 
       <div className="grid">
@@ -107,5 +112,6 @@ export default function App() {
 
       <LogPanel logs={logs} logText={logText} onCopy={handleCopyLogs} onClear={handleClearLogs} />
     </main>
+    </div>
   );
 }
