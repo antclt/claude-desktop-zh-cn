@@ -1,3 +1,5 @@
+> 已归档：被 DESIGN_SPEC_V2.md 取代（汉化补丁单页+抽屉重构）
+
 # Claude-Zh 视觉重做方案
 
 ## 1. Design Tokens 最终定稿

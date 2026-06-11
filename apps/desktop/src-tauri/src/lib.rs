@@ -242,16 +242,6 @@ async fn set_auto_updates(app: AppHandle, enabled: bool) -> Result<(), String> {
     .await
 }
 
-#[tauri::command]
-async fn sync_cc_switch_skills(app: AppHandle) -> Result<(), String> {
-    run_blocking_action(app, |logger, _| platform::sync_cc_switch_skills(&logger)).await
-}
-
-#[tauri::command]
-async fn unsync_cc_switch_skills(app: AppHandle) -> Result<(), String> {
-    run_blocking_action(app, |logger, _| platform::unsync_cc_switch_skills(&logger)).await
-}
-
 fn run_cli_file(path: PathBuf) -> i32 {
     let text = match fs::read_to_string(&path) {
         Ok(text) => text,
@@ -319,9 +309,7 @@ pub fn run() {
             drain_action_logs,
             restore_patch,
             install_resource_update,
-            set_auto_updates,
-            sync_cc_switch_skills,
-            unsync_cc_switch_skills
+            set_auto_updates
         ])
         .setup(|app| {
             // Windows 平台启用原生窗口装饰（标题栏 + 控制按钮），

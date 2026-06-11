@@ -32,3 +32,8 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# 本地开发脚本与运行时产物
+run-tauri-dev.bat
+tauri-dev.log*
+tauri-dev.pid
+

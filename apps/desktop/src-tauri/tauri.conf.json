@@ -13,10 +13,13 @@
     "windows": [
       {
         "title": "Claude-Zh",
-        "width": 980,
-        "height": 740,
-        "minWidth": 760,
-        "minHeight": 620,
+        "width": 318,
+        "height": 388,
+        "minWidth": 318,
+        "minHeight": 388,
+        "maxWidth": 318,
+        "maxHeight": 388,
+        "resizable": false,
         "decorations": false,
         "transparent": false
       }
