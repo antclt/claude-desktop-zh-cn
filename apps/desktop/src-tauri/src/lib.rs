@@ -326,10 +326,16 @@ pub fn run() {
         .setup(|app| {
             // Windows 平台启用原生窗口装饰（标题栏 + 控制按钮），
             // 回避 WebView2 无边框模式下自绘内容大面积不可见的渲染问题。
+            // 失败时仅记录日志，不阻塞应用启动。
             #[cfg(target_os = "windows")]
             {
-                let window = app.get_webview_window("main").unwrap();
-                let _ = window.set_decorations(true);
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(err) = window.set_decorations(true) {
+                        eprintln!("[tauri setup] 启用 Windows 原生装饰失败: {err}");
+                    }
+                } else {
+                    eprintln!("[tauri setup] 找不到 label 为 main 的 webview 窗口，跳过 set_decorations");
+                }
             }
             Ok(())
         })
