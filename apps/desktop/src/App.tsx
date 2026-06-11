@@ -85,8 +85,8 @@ export default function App() {
     void runAction("删除 skills 同步", () => invoke("unsync_cc_switch_skills"));
   }, [runAction]);
 
-  const handleCopyLogs = useCallback(() => {
-    void navigator.clipboard.writeText(logText);
+  const handleCopyLogs = useCallback(async () => {
+    await navigator.clipboard.writeText(logText);
   }, [logText]);
 
   const handleClearLogs = useCallback(() => {

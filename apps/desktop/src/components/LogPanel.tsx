@@ -11,7 +11,7 @@ import type { LogEvent } from "../types";
 type LogPanelProps = {
   logs: LogEvent[];
   logText: string;
-  onCopy: () => void;
+  onCopy: () => Promise<unknown> | void;
   onClear: () => void;
 };
 
@@ -29,9 +29,13 @@ export function LogPanel({ logs, logText, onCopy, onClear }: LogPanelProps) {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
-  const handleCopy = () => {
-    onCopy();
-    toast.success("日志已复制");
+  const handleCopy = async () => {
+    try {
+      await onCopy();
+      toast.success("日志已复制");
+    } catch {
+      toast.error("复制失败", { description: "请检查剪贴板权限" });
+    }
   };
 
   return (
