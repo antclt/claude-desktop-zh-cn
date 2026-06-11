@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn 标准色板 */
+    --background: 40 20% 97%;
+    --foreground: 240 8% 12%;
+    --card: 40 20% 99%;
+    --card-foreground: 240 8% 12%;
+    --popover: 40 20% 99%;
+    --popover-foreground: 240 8% 12%;
+    --primary: 15 58% 59%;
+    --primary-foreground: 40 20% 99%;
+    --secondary: 40 15% 94%;
+    --secondary-foreground: 240 8% 12%;
+    --muted: 40 15% 95%;
+    --muted-foreground: 240 3% 60%;
+    --accent: 40 15% 94%;
+    --accent-foreground: 240 8% 12%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 40 20% 99%;
+    --border: 40 10% 88%;
+    --border-subtle: 40 10% 93%;
+    --input: 40 10% 88%;
+    --ring: 15 58% 59% / 0.35;
+    --radius: 0.625rem;
+
+    /* 额外语义色 */
+    --success: 145 50% 42%;
+    --warning: 38 85% 52%;
+    --error: 0 65% 55%;
+
+    /* z-index 阶梯 */
+    --z-titlebar: 50;
+    --z-dropdown: 100;
+    --z-dialog: 200;
+    --z-toast: 300;
+  }
+
+  .dark {
+    --background: 240 6% 10%;
+    --foreground: 40 20% 96%;
+    --card: 240 5% 14%;
+    --card-foreground: 40 20% 96%;
+    --popover: 240 5% 14%;
+    --popover-foreground: 40 20% 96%;
+    --primary: 15 58% 59%;
+    --primary-foreground: 40 20% 99%;
+    --secondary: 240 5% 18%;
+    --secondary-foreground: 40 20% 96%;
+    --muted: 240 5% 18%;
+    --muted-foreground: 240 4% 55%;
+    --accent: 240 5% 18%;
+    --accent-foreground: 40 20% 96%;
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 40 20% 99%;
+    --border: 240 4% 20%;
+    --border-subtle: 240 4% 16%;
+    --input: 240 4% 20%;
+    --ring: 15 58% 59% / 0.35;
+
+    --success: 145 45% 48%;
+    --warning: 38 80% 58%;
+    --error: 0 70% 60%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}

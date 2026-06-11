@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { toast } from "sonner";
 import type { ActionFinished, ActionLogDrain, ActionStarted, LogEvent } from "../types";
 import { createActionId, waitForPaint } from "../utils/action";
 import { levelLabel } from "../utils/status";
@@ -61,9 +62,9 @@ export function useActionRunner(refresh: () => Promise<unknown>) {
       await runRefresh();
 
       if (finished.ok) {
-        window.alert(`${finished.action} 已完成，可以继续操作。`);
+        toast.success("已完成", { description: `${finished.action} 已完成，可以继续操作。` });
       } else {
-        window.alert(`${finished.action} 失败：${finished.error ?? "请查看执行日志。"}`);
+        toast.error("操作失败", { description: `${finished.action} 失败：${finished.error ?? "请查看执行日志。"}` });
       }
     },
     [appendLog, runRefresh],
@@ -119,12 +120,12 @@ export function useActionRunner(refresh: () => Promise<unknown>) {
         await fn();
         appendLog({ level: "info", message: `完成：${name}` });
         await runRefresh();
-        window.alert(`${name} 已完成，可以继续操作。`);
+        toast.success("已完成", { description: `${name} 已完成，可以继续操作。` });
       } catch (error) {
         const message = String(error);
         setLastError(message);
         appendLog({ level: "error", message });
-        window.alert(`${name} 失败：${message}`);
+        toast.error("操作失败", { description: `${name} 失败：${message}` });
       } finally {
         setBusy(null);
       }
@@ -156,7 +157,7 @@ export function useActionRunner(refresh: () => Promise<unknown>) {
         setLastError(message);
         setBusy(null);
         appendLog({ level: "error", message });
-        window.alert(`${name} 失败：${message}`);
+        toast.error("操作失败", { description: `${name} 失败：${message}` });
       }
     },
     [appendLog],
