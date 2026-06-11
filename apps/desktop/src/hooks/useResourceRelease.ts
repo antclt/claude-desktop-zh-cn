@@ -1,7 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { ActionStarted, GitHubRelease, LogEvent, ResourceReleaseManifest } from "../types";
 import { compareVersions, normalizeVersion } from "../utils/version";
+
+type PendingUpdate = {
+  release: string;
+  zipballUrl: string;
+  repo: string;
+};
 
 export function useResourceRelease(
   appendLog: (entry: LogEvent) => void,
@@ -11,6 +17,27 @@ export function useResourceRelease(
   ) => Promise<void>,
 ) {
   const checkedResourceUpdateRef = useRef(false);
+  const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(null);
+  const runBackgroundActionRef = useRef(runBackgroundAction);
+  runBackgroundActionRef.current = runBackgroundAction;
+
+  const approveUpdate = useCallback(async () => {
+    if (!pendingUpdate) return;
+    const { release, zipballUrl, repo } = pendingUpdate;
+    setPendingUpdate(null);
+    await runBackgroundActionRef.current("更新补丁资源", (actionId) =>
+      invoke<ActionStarted>("install_resource_update", {
+        actionId,
+        zipballUrl,
+        release,
+        repo,
+      }),
+    );
+  }, [pendingUpdate]);
+
+  const dismissUpdate = useCallback(() => {
+    setPendingUpdate(null);
+  }, []);
 
   useEffect(() => {
     if (checkedResourceUpdateRef.current) {
@@ -38,24 +65,16 @@ export function useResourceRelease(
           return;
         }
 
-        const shouldUpdate = window.confirm(
-          `发现补丁资源更新：${currentVersion} -> ${latestVersion}\n\n是否现在下载并更新？`,
-        );
-        if (!shouldUpdate) {
-          return;
-        }
-
-        await runBackgroundAction("更新补丁资源", (actionId) =>
-          invoke<ActionStarted>("install_resource_update", {
-            actionId,
-            zipballUrl: latest.zipball_url,
-            release: latestVersion,
-            repo: manifest.repo,
-          }),
-        );
+        setPendingUpdate({
+          release: latestVersion,
+          zipballUrl: latest.zipball_url,
+          repo: manifest.repo,
+        });
       } catch (error) {
         appendLog({ level: "warn", message: `检查补丁资源更新失败: ${String(error)}` });
       }
     })();
-  }, [appendLog, runBackgroundAction]);
+  }, [appendLog]);
+
+  return { pendingUpdate, approveUpdate, dismissUpdate };
 }

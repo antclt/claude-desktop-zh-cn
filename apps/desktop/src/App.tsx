@@ -5,6 +5,17 @@ import { InstallOptions } from "./components/InstallOptions";
 import { LogPanel } from "./components/LogPanel";
 import { StatusPanel } from "./components/StatusPanel";
 import { TitleBar } from "./components/TitleBar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Toaster } from "@/components/ui/sonner";
 import { useActionRunner } from "./hooks/useActionRunner";
 import { useEnvironment } from "./hooks/useEnvironment";
 import { useResourceRelease } from "./hooks/useResourceRelease";
@@ -34,7 +45,7 @@ export default function App() {
     void runRefresh();
   }, [runRefresh]);
 
-  useResourceRelease(appendLog, runBackgroundAction);
+  const { pendingUpdate, approveUpdate, dismissUpdate } = useResourceRelease(appendLog, runBackgroundAction);
 
   const canRun = Boolean(env?.resourcesOk && env?.claudePath && !busy);
 
@@ -80,38 +91,55 @@ export default function App() {
   }, [setLogs]);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       <TitleBar />
-      <main className="shell flex-1 overflow-y-auto">
-      <StatusPanel env={env} busy={busy} lastError={lastError} onRefresh={handleRefresh} />
+      <main className="flex-1 overflow-hidden flex flex-col p-4 gap-4">
+        <StatusPanel env={env} busy={busy} lastError={lastError} onRefresh={handleRefresh} />
 
-      <div className="grid">
-        <InstallOptions
-          language={language}
-          mode={mode}
-          launchAfter={launchAfter}
-          dryRun={dryRun}
-          busy={busy}
-          canRun={canRun}
-          onLanguageChange={setLanguage}
-          onModeChange={setMode}
-          onLaunchAfterChange={setLaunchAfter}
-          onDryRunChange={setDryRun}
-          onInstall={handleInstall}
-        />
-        <ActionButtons
-          canRun={canRun}
-          busy={busy}
-          onRestore={handleRestore}
-          onEnableAutoUpdates={handleEnableAutoUpdates}
-          onDisableAutoUpdates={handleDisableAutoUpdates}
-          onSyncSkills={handleSyncSkills}
-          onUnsyncSkills={handleUnsyncSkills}
-        />
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
+          <InstallOptions
+            language={language}
+            mode={mode}
+            launchAfter={launchAfter}
+            dryRun={dryRun}
+            busy={busy}
+            canRun={canRun}
+            onLanguageChange={setLanguage}
+            onModeChange={setMode}
+            onLaunchAfterChange={setLaunchAfter}
+            onDryRunChange={setDryRun}
+            onInstall={handleInstall}
+          />
+          <ActionButtons
+            canRun={canRun}
+            busy={busy}
+            onRestore={handleRestore}
+            onEnableAutoUpdates={handleEnableAutoUpdates}
+            onDisableAutoUpdates={handleDisableAutoUpdates}
+            onSyncSkills={handleSyncSkills}
+            onUnsyncSkills={handleUnsyncSkills}
+          />
+        </div>
 
-      <LogPanel logs={logs} logText={logText} onCopy={handleCopyLogs} onClear={handleClearLogs} />
-    </main>
+        <LogPanel logs={logs} logText={logText} onCopy={handleCopyLogs} onClear={handleClearLogs} />
+      </main>
+
+      <AlertDialog open={!!pendingUpdate} onOpenChange={(open) => { if (!open) dismissUpdate(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>发现补丁资源更新</AlertDialogTitle>
+            <AlertDialogDescription>
+              检测到新版本 {pendingUpdate?.release}，是否现在下载并更新？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={dismissUpdate}>稍后再说</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void approveUpdate()}>立即更新</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Toaster richColors position="bottom-right" closeButton />
     </div>
   );
 }
