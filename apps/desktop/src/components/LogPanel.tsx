@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
-import { Copy, Eraser, Terminal } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Copy, Eraser, ScrollText, Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { fadeInUp, useReducedMotion } from "../lib/motion";
 import type { LogEvent } from "../types";
 
 type LogPanelProps = {
@@ -22,6 +23,7 @@ function levelColor(level: string) {
 
 export function LogPanel({ logs, logText, onCopy, onClear }: LogPanelProps) {
   const logEndRef = useRef<HTMLDivElement | null>(null);
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -55,15 +57,30 @@ export function LogPanel({ logs, logText, onCopy, onClear }: LogPanelProps) {
             style={{ background: "hsl(220 15% 8%)" }}
           >
             {logs.length === 0 ? (
-              <div className="flex items-center justify-center h-32 text-gray-500">
-                暂无日志
-              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduced ? 0 : 0.25 }}
+                className="flex flex-col items-center justify-center h-32 gap-2"
+              >
+                <ScrollText className="h-8 w-8 text-muted-foreground/60" />
+                <span className="text-xs text-muted-foreground">暂无日志</span>
+              </motion.div>
             ) : (
-              logs.map((log, i) => (
-                <div key={i} className={`${levelColor(log.level)} py-0.5`}>
-                  {log.message}
-                </div>
-              ))
+              <AnimatePresence initial={false}>
+                {logs.map((log, i) => (
+                  <motion.div
+                    key={i}
+                    variants={fadeInUp}
+                    initial="hidden"
+                    animate="visible"
+                    transition={{ duration: reduced ? 0 : 0.2, ease: "easeOut" }}
+                    className={`${levelColor(log.level)} py-0.5`}
+                  >
+                    {log.message}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             )}
             <div ref={logEndRef} />
           </div>

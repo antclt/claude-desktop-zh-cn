@@ -97,7 +97,7 @@ export function InstallOptions({
         </div>
 
         <Button
-          className="w-full h-12 text-base font-semibold"
+          className="w-full h-12 text-base font-semibold min-w-[8rem]"
           disabled={!canRun}
           onClick={onInstall}
         >

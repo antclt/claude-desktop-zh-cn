@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { invoke } from "@tauri-apps/api/core";
 import { ActionButtons } from "./components/ActionButtons";
 import { InstallOptions } from "./components/InstallOptions";
@@ -16,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Toaster } from "@/components/ui/sonner";
+import { fadeInUp, staggerContainer, useReducedMotion } from "./lib/motion";
 import { useActionRunner } from "./hooks/useActionRunner";
 import { useEnvironment } from "./hooks/useEnvironment";
 import { useResourceRelease } from "./hooks/useResourceRelease";
@@ -24,6 +26,7 @@ import type { ActionStarted, Language, PatchMode } from "./types";
 
 export default function App() {
   useTheme(); // 跟随系统主题，无需消费返回值
+  const reduced = useReducedMotion();
   const { env, detectEnvironment } = useEnvironment();
   const {
     busy,
@@ -93,36 +96,49 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <TitleBar />
-      <main className="flex-1 overflow-hidden flex flex-col p-4 gap-4">
-        <StatusPanel env={env} busy={busy} lastError={lastError} onRefresh={handleRefresh} />
+      <motion.main
+        className="flex-1 overflow-hidden flex flex-col p-4 gap-4"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={fadeInUp} transition={{ duration: reduced ? 0 : 0.2, ease: "easeOut" }}>
+          <StatusPanel env={env} busy={busy} lastError={lastError} onRefresh={handleRefresh} />
+        </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-          <InstallOptions
-            language={language}
-            mode={mode}
-            launchAfter={launchAfter}
-            dryRun={dryRun}
-            busy={busy}
-            canRun={canRun}
-            onLanguageChange={setLanguage}
-            onModeChange={setMode}
-            onLaunchAfterChange={setLaunchAfter}
-            onDryRunChange={setDryRun}
-            onInstall={handleInstall}
-          />
-          <ActionButtons
-            canRun={canRun}
-            busy={busy}
-            onRestore={handleRestore}
-            onEnableAutoUpdates={handleEnableAutoUpdates}
-            onDisableAutoUpdates={handleDisableAutoUpdates}
-            onSyncSkills={handleSyncSkills}
-            onUnsyncSkills={handleUnsyncSkills}
-          />
+          <motion.div variants={fadeInUp} transition={{ duration: reduced ? 0 : 0.2, ease: "easeOut" }}>
+            <InstallOptions
+              language={language}
+              mode={mode}
+              launchAfter={launchAfter}
+              dryRun={dryRun}
+              busy={busy}
+              canRun={canRun}
+              onLanguageChange={setLanguage}
+              onModeChange={setMode}
+              onLaunchAfterChange={setLaunchAfter}
+              onDryRunChange={setDryRun}
+              onInstall={handleInstall}
+            />
+          </motion.div>
+          <motion.div variants={fadeInUp} transition={{ duration: reduced ? 0 : 0.2, ease: "easeOut" }}>
+            <ActionButtons
+              canRun={canRun}
+              busy={busy}
+              onRestore={handleRestore}
+              onEnableAutoUpdates={handleEnableAutoUpdates}
+              onDisableAutoUpdates={handleDisableAutoUpdates}
+              onSyncSkills={handleSyncSkills}
+              onUnsyncSkills={handleUnsyncSkills}
+            />
+          </motion.div>
         </div>
 
-        <LogPanel logs={logs} logText={logText} onCopy={handleCopyLogs} onClear={handleClearLogs} />
-      </main>
+        <motion.div variants={fadeInUp} transition={{ duration: reduced ? 0 : 0.2, ease: "easeOut" }}>
+          <LogPanel logs={logs} logText={logText} onCopy={handleCopyLogs} onClear={handleClearLogs} />
+        </motion.div>
+      </motion.main>
 
       <AlertDialog open={!!pendingUpdate} onOpenChange={(open) => { if (!open) dismissUpdate(); }}>
         <AlertDialogContent>
