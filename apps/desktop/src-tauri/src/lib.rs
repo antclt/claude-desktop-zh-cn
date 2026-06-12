@@ -236,7 +236,12 @@ fn drain_action_logs(action_id: String, offset: usize) -> ActionLogDrain {
 }
 
 #[tauri::command]
-fn restore_patch(app: AppHandle, action_id: String, request: RestoreRequest) -> ActionStarted {
+fn restore_patch(
+    app: AppHandle,
+    action_id: String,
+    request: Option<RestoreRequest>,
+) -> ActionStarted {
+    let request = request.unwrap_or_default();
     spawn_background_action(app, "恢复原样", action_id, move |logger, _| {
         platform::restore_patch(request.dry_run, &logger)
     })
