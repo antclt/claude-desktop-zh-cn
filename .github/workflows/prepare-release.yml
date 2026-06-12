@@ -23,7 +23,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
+
+      - name: Ensure triggered from main
+        run: |
+          if [ "${{ github.ref_name }}" != "main" ]; then
+            echo "This workflow must be triggered from the main branch (got ${{ github.ref_name }})."
+            exit 1
+          fi
 
       - name: Validate version
         run: |
