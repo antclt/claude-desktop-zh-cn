@@ -5,6 +5,7 @@ on:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
+  contents: read
   pull-requests: read
 
 jobs:
@@ -43,7 +44,7 @@ jobs:
           subjectPattern: ^.{1,50}$
           subjectPatternError: |
             PR 标题描述部分不超过 50 个字符，当前: "{subject}"
-          headerPattern: ^(?:Revert ")?(\w+)(?:\(([^)]+)\))?: (.+)$
+          headerPattern: '^(?:Revert ")?(\w+)(?:\(([^)]+)\))?: (.+)$'
           headerPatternError: |
             PR 标题格式必须为 `type(scope): 中文描述`，例如：
             - feat(安装器): 添加 Windows 安装前环境检查

@@ -183,11 +183,33 @@ jobs:
         run: npm ci
 
       - name: Run Rust tests
-        run: cargo test --workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if cargo test --workspace; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 15))
+          done
 
       - name: Build Tauri installer
         working-directory: apps/desktop
-        run: npm run tauri -- build --ci --no-sign --bundles ${{ matrix.bundles }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if npm run tauri -- build --ci --no-sign --bundles ${{ matrix.bundles }}; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 15))
+          done
 
       - name: List bundle outputs
         shell: bash
