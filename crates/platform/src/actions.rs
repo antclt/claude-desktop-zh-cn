@@ -41,15 +41,23 @@ pub fn install_patch(resources: &Path, req: &InstallRequest, logger: &dyn LogSin
     platform_install_patch(resources, req, logger)
 }
 
-pub fn restore_patch(logger: &dyn LogSink) -> Result<()> {
-    logger.info("恢复请求: 准备恢复官方 Claude.app 和英文语言配置。");
+pub fn restore_patch(dry_run: bool, logger: &dyn LogSink) -> Result<()> {
+    logger.info(format!(
+        "恢复请求: dry_run={}, 准备恢复官方 Claude.app 和英文语言配置。",
+        dry_run
+    ));
+    if dry_run {
+        logger.info("dry-run 模式：将检测恢复条件并打印恢复计划，不会修改任何文件。");
+        return platform_restore_patch(true, logger);
+    }
     if !is_admin() {
         let resources = resolve_resources(None)?;
         logger.info("当前进程不是管理员权限，切换到系统授权恢复。");
-        return run_elevated_cli("restore_patch", None, None, &resources, logger);
+        let restore_req = claude_zh_core::RestoreRequest { dry_run: false };
+        return run_elevated_cli("restore_patch", None, Some(restore_req), &resources, logger);
     }
     logger.info("当前进程已有管理员权限，直接执行恢复。");
-    platform_restore_patch(logger)
+    platform_restore_patch(false, logger)
 }
 
 pub fn set_auto_updates(enabled: bool, logger: &dyn LogSink) -> Result<()> {
