@@ -469,7 +469,7 @@
   ],
   [
     "hint:\"Org-pushed MCP servers — remote (HTTP/SSE) or local (stdio command). May embed bearer tokens.\"",
-    "hint:\"組織推送的 MCP 伺服器：遠端（HTTP/SSE）或本機（stdio 命令）。可能嵌入 Bearer 權杖。\""
+    "hint:\"組織推送的 MCP 伺服器：遠端（HTTP/SSE）或本機（stdio 命令）。可能嵌入 Bearer token。\""
   ],
   [
     "ht=e=>0===e?\"All\"",
@@ -645,7 +645,7 @@
   ],
   [
     "title:\"Max tokens per window\"",
-    "title:\"每個視窗最大權杖數\""
+    "title:\"每個視窗最大 token 數\""
   ],
   [
     "title:\"Model discovery\"",

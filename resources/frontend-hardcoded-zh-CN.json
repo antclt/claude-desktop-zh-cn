@@ -45,7 +45,7 @@
   ],
   [
     "Authorization tokens",
-    "授权令牌"
+    "授权 token"
   ],
   [
     "Auto-archive after PR merge or close",
@@ -105,7 +105,7 @@
   ],
   [
     "Created when you sign in to Claude Code. Revoke a token to sign out from that device.",
-    "登录 Claude Code 时创建。撤销令牌即可让该设备退出登录。"
+    "登录 Claude Code 时创建。撤销 token 即可让该设备退出登录。"
   ],
   [
     "\"Create your first scheduled task\"",
@@ -453,7 +453,7 @@
   ],
   [
     "Max tokens per window",
-    "每窗口最大令牌数"
+    "每窗口最大 token 数"
   ],
   [
     "MCP SERVERS",
@@ -481,7 +481,7 @@
   ],
   [
     "Org-pushed MCP servers: remote (HTTP/SSE) or local (stdio command). May embed bearer tokens.",
-    "组织推送的 MCP 服务器：远程（HTTP/SSE）或本地（stdio 命令）。可能嵌入 Bearer 令牌。"
+    "组织推送的 MCP 服务器：远程（HTTP/SSE）或本地（stdio 命令）。可能嵌入 Bearer token。"
   ],
   [
     "Per-tool approval policy. \"ask\" requires user approval before each call; \"allow\" is the default. Use Disabled built-in tools to remove a tool entirely.",
@@ -517,7 +517,7 @@
   ],
   [
     "tokens",
-    "令牌"
+    "token"
   ],
   [
     "Users see only this provider at the login screen. The option to sign in to Claude.ai is hidden.",
@@ -953,7 +953,7 @@
   ],
   [
     "hint:\"Org-pushed MCP servers — remote (HTTP/SSE) or local (stdio command). May embed bearer tokens.\"",
-    "hint:\"组织推送的 MCP 服务器：远程（HTTP/SSE）或本地（stdio 命令）。可能嵌入 Bearer 令牌。\""
+    "hint:\"组织推送的 MCP 服务器：远程（HTTP/SSE）或本地（stdio 命令）。可能嵌入 Bearer token。\""
   ],
   [
     "ht=e=>0===e?\"All\"",
@@ -1129,7 +1129,7 @@
   ],
   [
     "title:\"Max tokens per window\"",
-    "title:\"每窗口最大令牌数\""
+    "title:\"每窗口最大 token 数\""
   ],
   [
     "title:\"Model discovery\"",
