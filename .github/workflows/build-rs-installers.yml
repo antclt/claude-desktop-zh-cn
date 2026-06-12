@@ -31,11 +31,13 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            artifact_name: rust-macos-dmg
+            artifact_name: rust-macos-universal-dmg
             bundles: dmg
+            tauri_target_args: --target universal-apple-darwin
           - os: windows-latest
             artifact_name: rust-windows-exe
             bundles: nsis
+            tauri_target_args: ""
 
     steps:
       - name: Checkout
@@ -52,6 +54,10 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install macOS Rust targets
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -84,7 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in 1 2 3; do
-            if npm run tauri -- build --ci --no-sign --bundles ${{ matrix.bundles }}; then
+            if npm run tauri -- build --ci --no-sign --bundles ${{ matrix.bundles }} ${{ matrix.tauri_target_args }}; then
               exit 0
             fi
             if [ "$attempt" -eq 3 ]; then
@@ -96,7 +102,7 @@ jobs:
       - name: List bundle outputs
         shell: bash
         run: |
-          find target/release/bundle -maxdepth 3 -type f -print 2>/dev/null || true
+          find target -path "*/release/bundle/*" -type f -print 2>/dev/null || true
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
@@ -104,4 +110,5 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: |
             target/release/bundle/**
+            target/*/release/bundle/**
           if-no-files-found: error
