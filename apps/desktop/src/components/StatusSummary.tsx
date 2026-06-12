@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, FlaskConical, Loader2, Rocket, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FlaskConical, Loader2, Lock, Rocket, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayoutEffect, useState } from "react";
 import type { EnvironmentReport } from "../types";
@@ -25,6 +25,7 @@ export function StatusSummary({
   onAutoUpdateChange,
 }: StatusSummaryProps) {
   const autoUpdates = env?.autoUpdatesEnabled ?? false;
+  const isWindows = env?.platform === "Windows";
   const disabled = busy !== null;
 
   // 三个互斥状态
@@ -102,6 +103,7 @@ export function StatusSummary({
           <div className={segmentedBase}>
             <Zap className="h-3 w-3" />
             <span className="text-[10.5px] font-medium truncate">自动更新</span>
+            {isWindows && <Lock className="h-2 w-2" aria-hidden="true" />}
           </div>
           <div className={segmentedBase}>
             <Rocket className="h-3 w-3" />
@@ -128,9 +130,19 @@ export function StatusSummary({
             disabled={disabled}
             className={cn(segmentedBase, autoUpdates ? segmentedOn : segmentedOff)}
             aria-pressed={autoUpdates}
+            title={isWindows ? "切换时会弹出 Windows 授权弹窗" : undefined}
           >
             <Zap className={cn("h-3 w-3 flex-shrink-0", autoUpdates ? iconOn : iconOff)} />
             <span className="text-[10.5px] font-medium truncate">自动更新</span>
+            {isWindows && (
+              <Lock
+                className={cn(
+                  "h-2 w-2 flex-shrink-0",
+                  autoUpdates ? "text-primary/60" : "text-muted-foreground/50"
+                )}
+                aria-hidden="true"
+              />
+            )}
           </button>
 
           <button
