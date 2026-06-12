@@ -37,3 +37,7 @@ run-tauri-dev.bat
 tauri-dev.log*
 tauri-dev.pid
 
+# pnpm 工具副产物（项目统一用 npm 与 npm ci，pnpm 仅本地偶发触发）
+apps/desktop/pnpm-lock.yaml
+apps/desktop/pnpm-workspace.yaml
+
