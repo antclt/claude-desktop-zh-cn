@@ -12,9 +12,16 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to checkout (branch/tag/sha). Defaults to main."
+        required: false
+        type: string
+        default: "main"
   push:
     branches:
       - main
+      - feat/extract-backend
     tags:
       - "*"
 
@@ -36,6 +43,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
