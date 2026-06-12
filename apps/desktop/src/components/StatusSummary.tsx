@@ -24,7 +24,7 @@ export function StatusSummary({
   onDryRunChange,
   onAutoUpdateChange,
 }: StatusSummaryProps) {
-  const autoUpdates = env?.autoUpdatesEnabled ?? false;
+  const autoUpdates = env?.autoUpdatesEnabled ?? true;
   const isWindows = env?.platform === "Windows";
   const disabled = busy !== null;
 

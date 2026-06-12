@@ -10,7 +10,7 @@ mod resources;
 pub use actions::{
     install_patch, restore_patch, set_auto_updates, sync_cc_switch_skills, unsync_cc_switch_skills,
 };
-pub use auto_update::auto_updates_enabled;
+pub use auto_update::{auto_updates_enabled, parse_enabled_flag};
 pub use elevation::{run_cli_request, run_elevated_cli};
 pub use environment::{
     backup_count, current_locale, detect_claude, detect_environment, is_admin, platform_name,

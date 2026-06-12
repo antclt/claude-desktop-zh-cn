@@ -20,7 +20,7 @@ pub fn install_patch(resources: &Path, req: &InstallRequest, logger: &dyn LogSin
         logger.info("当前进程不是管理员权限，切换到系统授权安装。");
         let mut elevated_req = req.clone();
         elevated_req.launch_after = false;
-        run_elevated_cli("install_patch", Some(elevated_req), None, Some(resources), logger)?;
+        run_elevated_cli("install_patch", Some(elevated_req), None, None, Some(resources), logger)?;
         if req.launch_after {
             logger.info("提权安装已完成，正在从主进程启动 Claude Desktop。");
             if let Some((app, _, _)) = detect_claude() {
@@ -39,19 +39,32 @@ pub fn install_patch(resources: &Path, req: &InstallRequest, logger: &dyn LogSin
     platform_install_patch(resources, req, logger)
 }
 
-pub fn restore_patch(logger: &dyn LogSink) -> Result<()> {
-    logger.info("恢复请求: 准备恢复官方 Claude.app 和英文语言配置。");
+pub fn restore_patch(dry_run: bool, logger: &dyn LogSink) -> Result<()> {
+    logger.info(format!(
+        "恢复请求: dry_run={}, 准备恢复官方 Claude.app 和英文语言配置。",
+        dry_run
+    ));
+    if dry_run {
+        logger.info("dry-run 模式：将检测恢复条件并打印恢复计划，不会修改任何文件。");
+        return platform_restore_patch(true, logger);
+    }
     if !is_admin() {
-        let resources = resolve_resources(None)?;
         logger.info("当前进程不是管理员权限，切换到系统授权恢复。");
-        return run_elevated_cli("restore_patch", None, None, Some(&resources), logger);
+        return run_elevated_cli(
+            "restore_patch",
+            None,
+            Some(claude_zh_core::RestoreRequest { dry_run: false }),
+            None,
+            None,
+            logger,
+        );
     }
     logger.info("当前进程已有管理员权限，直接执行恢复。");
-    platform_restore_patch(logger)
+    platform_restore_patch(false, logger)
 }
 
 pub fn set_auto_updates(enabled: bool, logger: &dyn LogSink) -> Result<()> {
-    // Windows: HKCU\Software\Policies\Claude 子树受系统保护，写入必须 elevation。
+    // Windows: HKLM\Software\Policies\Claude 是机器级注册表路径，写入需管理员权限，所以非 admin 时走 elevation。
     // 读取永远不需要，所以 UI 状态显示不会受影响。macOS 不需要。
     #[cfg(windows)]
     {
@@ -59,6 +72,7 @@ pub fn set_auto_updates(enabled: bool, logger: &dyn LogSink) -> Result<()> {
             logger.info("当前进程不是管理员权限，切换到系统授权写入注册表策略。");
             return run_elevated_cli(
                 "set_auto_updates",
+                None,
                 None,
                 Some(enabled),
                 None,

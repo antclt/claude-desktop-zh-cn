@@ -297,17 +297,6 @@ fn run_cli_file(path: PathBuf) -> i32 {
     }
 }
 
-fn parse_enabled_arg(val: &str) -> bool {
-    match val {
-        "true" => true,
-        "false" => false,
-        _ => {
-            eprintln!("--enabled 无效值: {val}（期望 true 或 false）");
-            std::process::exit(2);
-        }
-    }
-}
-
 pub fn run() {
     let mut args = env::args().skip(1);
     if let Some(first) = args.next() {
@@ -325,22 +314,14 @@ pub fn run() {
             };
 
             // 解析 --enabled 参数（支持 --enabled=true 或 --enabled true）
-            let mut enabled: Option<bool> = None;
             let remaining: Vec<String> = args.collect();
-            let mut iter = remaining.iter();
-            while let Some(arg) = iter.next() {
-                if arg == "--enabled" {
-                    let Some(val) = iter.next() else {
-                        eprintln!("--enabled 缺少值（期望 true 或 false）");
-                        std::process::exit(2);
-                    };
-                    enabled = Some(parse_enabled_arg(val));
-                    break;
-                } else if let Some(val) = arg.strip_prefix("--enabled=") {
-                    enabled = Some(parse_enabled_arg(val));
-                    break;
+            let enabled = match platform::parse_enabled_flag(&remaining) {
+                Ok(v) => v,
+                Err(msg) => {
+                    eprintln!("{msg}");
+                    std::process::exit(2);
                 }
-            }
+            };
 
             if action == "set_auto_updates" && enabled.is_none() {
                 eprintln!("set_auto_updates 需要 --enabled 参数");

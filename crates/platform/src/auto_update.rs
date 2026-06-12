@@ -12,7 +12,7 @@
 //!     2. 官方文档明确支持 HKLM 路径；
 //!     3. 一次写入全体用户生效，对多用户机器更可控。
 //!   写 HKLM\Software\Policies 需管理员，所以从 actions 层走 elevation 流程。
-//!   读取用 KEY_READ | 0x200（KEY_WOW64_64KEY）兼容 32/64 位 hive。
+//!   读取用 KEY_READ（仅支持 64 位进程；本项目仅发 x64 构建）。
 //! - macOS：通过 `defaults` 命令写入 `com.anthropic.claudefordesktop` 域的
 //!   `disableAutoUpdates`（boolean）。`defaults` 走 CFPreferences 标准通道，
 //!   自动处理缓存同步，无需直接读写 plist 文件。
@@ -37,6 +37,41 @@ pub fn set_auto_updates(enabled: bool, logger: &dyn LogSink) -> Result<()> {
 /// `None` 表示读不到任何用户级策略（即从未设置过，Claude 默认行为：启用）。
 pub fn auto_updates_enabled() -> Option<bool> {
     platform::auto_updates_enabled_impl()
+}
+
+/// 从 CLI 参数列表中解析 `--enabled` 标志（纯函数，便于单测）。
+///
+/// 支持 `--enabled true` 和 `--enabled=true` 两种形式。
+/// 返回 `Ok(Some(true))` / `Ok(Some(false))` / `Ok(None)`（未出现）。
+/// 重复出现、值缺失或值非法时返回 `Err(String)`。
+pub fn parse_enabled_flag(args: &[String]) -> std::result::Result<Option<bool>, String> {
+    let mut result: Option<bool> = None;
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        if arg == "--enabled" {
+            if result.is_some() {
+                return Err("--enabled 重复出现".to_string());
+            }
+            let Some(val) = iter.next() else {
+                return Err("--enabled 缺少值（期望 true 或 false）".to_string());
+            };
+            result = Some(parse_bool_value(val)?);
+        } else if let Some(val) = arg.strip_prefix("--enabled=") {
+            if result.is_some() {
+                return Err("--enabled 重复出现".to_string());
+            }
+            result = Some(parse_bool_value(val)?);
+        }
+    }
+    Ok(result)
+}
+
+fn parse_bool_value(val: &str) -> std::result::Result<bool, String> {
+    match val {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(format!("--enabled 无效值: {val}（期望 true 或 false）")),
+    }
 }
 
 #[cfg(windows)]
@@ -178,10 +213,9 @@ mod platform {
     /// 返回 `Some(true)` 表示自动更新已启用，`Some(false)` 表示已禁用，
     /// `None` 表示无法解析（未设置或格式错误）。
     pub(super) fn parse_defaults_output(stdout: &str) -> Option<bool> {
-        let trimmed = stdout.trim();
-        match trimmed {
-            "1" => Some(false), // disableAutoUpdates=1 → 自动更新禁用
-            "0" => Some(true),  // disableAutoUpdates=0 → 自动更新启用
+        match stdout.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" => Some(false), // disableAutoUpdates=true → 自动更新禁用
+            "0" | "false" | "no" => Some(true),  // disableAutoUpdates=false → 自动更新启用
             _ => None,
         }
     }
@@ -295,6 +329,10 @@ mod tests {
         assert_eq!(platform::parse_defaults_output(""), None);
         // 无法解析的内容
         assert_eq!(platform::parse_defaults_output("garbage"), None);
+        // true/false/yes/no 兼容（大小写不敏感）
+        assert_eq!(platform::parse_defaults_output("true\n"), Some(false));
+        assert_eq!(platform::parse_defaults_output("FALSE"), Some(true));
+        assert_eq!(platform::parse_defaults_output("Yes"), Some(false));
     }
 
     #[test]
@@ -315,5 +353,40 @@ mod tests {
             msg.contains("缺少 enabled"),
             "错误信息应包含 '缺少 enabled'，实际: {msg}"
         );
+    }
+
+    #[test]
+    fn parse_enabled_flag_true() {
+        let args: Vec<String> = ["--enabled", "true"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(parse_enabled_flag(&args), Ok(Some(true)));
+    }
+
+    #[test]
+    fn parse_enabled_flag_equals_false() {
+        let args: Vec<String> = ["--enabled=false"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(parse_enabled_flag(&args), Ok(Some(false)));
+    }
+
+    #[test]
+    fn parse_enabled_flag_missing() {
+        let args: Vec<String> = ["--other"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(parse_enabled_flag(&args), Ok(None));
+    }
+
+    #[test]
+    fn parse_enabled_flag_duplicate() {
+        let args: Vec<String> = ["--enabled", "true", "--enabled", "false"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert!(parse_enabled_flag(&args).is_err());
+        assert!(parse_enabled_flag(&args).unwrap_err().contains("重复"));
+    }
+
+    #[test]
+    fn parse_enabled_flag_invalid_value() {
+        let args: Vec<String> = ["--enabled", "yes"].iter().map(|s| s.to_string()).collect();
+        assert!(parse_enabled_flag(&args).is_err());
+        assert!(parse_enabled_flag(&args).unwrap_err().contains("无效值"));
     }
 }
