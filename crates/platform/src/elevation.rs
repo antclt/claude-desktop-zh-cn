@@ -1,10 +1,21 @@
+//! 提权请求与日志桥接模块。
+//!
+//! 在 Windows 平台上，安装/恢复操作可能需要管理员权限（如修改 WindowsApps 目录）。
+//! 本模块通过临时文件 + UAC 提权重新执行子进程来获得权限：
+//! - 父进程把请求参数写入 elevation 私有目录下的 JSON 文件，启动提权子进程后等待完成
+//! - 子进程读取请求文件，执行操作，把日志事件以 jsonl 格式追加到 log 文件
+//! - 父进程通过 `drain_jsonl_log` 增量读取并转发到主 logger
+//!
+//! `cleanup_stale_elevation_files` 会在启动时清理 elevation 目录下超过 1 小时的残留文件。
+//! `write_json_exclusive` 使用 `create_new(true)` 防 TOCTOU。
+
 use claude_zh_core::{
-    err, write_json, CliRequest, CoreError, LogEvent, LogSink, LogSinkExt, Result,
+    err, CliRequest, CoreError, LogEvent, LogSink, LogSinkExt, Result,
 };
 use std::{
     env, fs,
-    io::{BufRead, BufReader, Seek, SeekFrom},
-    path::Path,
+    io::{BufRead, BufReader, Seek, SeekFrom, Write},
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     thread,
     time::{Duration, Instant},
@@ -52,6 +63,51 @@ pub fn run_cli_request(request: CliRequest, logger: &dyn LogSink) -> Result<()> 
     }
 }
 
+fn elevation_dir() -> Result<PathBuf> {
+    let base = dirs::data_local_dir()
+        .or_else(dirs::config_dir)
+        .ok_or_else(|| CoreError::Message("无法确定用户本地数据目录。".to_string()))?;
+    let dir = base.join("ClaudeDesktopZhCn").join("elevation");
+    fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+fn write_json_exclusive(path: &Path, value: &serde_json::Value) -> Result<()> {
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|e| {
+            CoreError::Message(format!(
+                "创建文件失败（可能已存在）: {} — {e}",
+                path.display()
+            ))
+        })?;
+    let json = serde_json::to_string_pretty(value)?;
+    file.write_all(json.as_bytes())?;
+    Ok(())
+}
+
+fn cleanup_stale_elevation_files(dir: &Path) {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path
+                .extension()
+                .is_some_and(|ext| ext == "json" || ext == "jsonl")
+            {
+                if let Ok(metadata) = path.metadata() {
+                    if let Ok(modified) = metadata.modified() {
+                        if modified.elapsed().unwrap_or_default() > Duration::from_secs(3600) {
+                            let _ = fs::remove_file(&path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn run_elevated_cli(
     action: &str,
     install: Option<claude_zh_core::InstallRequest>,
@@ -60,7 +116,9 @@ pub fn run_elevated_cli(
     resources_path: Option<&Path>,
     logger: &dyn LogSink,
 ) -> Result<()> {
-    let log_path = env::temp_dir().join(format!("claude-zh-cn-rs-{}.jsonl", Uuid::new_v4()));
+    let elev_dir = elevation_dir()?;
+    cleanup_stale_elevation_files(&elev_dir);
+    let log_path = elev_dir.join(format!("claude-zh-cn-rs-{}.jsonl", Uuid::new_v4()));
     let request = CliRequest {
         action: action.to_string(),
         install,
@@ -69,8 +127,8 @@ pub fn run_elevated_cli(
         resources_path: resources_path.map(|p| p.to_path_buf()),
         log_path: Some(log_path.clone()),
     };
-    let request_path = env::temp_dir().join(format!("claude-zh-cn-rs-{}.json", Uuid::new_v4()));
-    write_json(&request_path, &serde_json::to_value(&request)?)?;
+    let request_path = elev_dir.join(format!("claude-zh-cn-rs-{}.json", Uuid::new_v4()));
+    write_json_exclusive(&request_path, &serde_json::to_value(&request)?)?;
     let exe = env::current_exe()?;
     logger.info(format!("准备提权执行: {action}"));
     logger.info(format!("当前可执行文件: {}", exe.display()));
@@ -103,15 +161,17 @@ pub fn run_elevated_cli(
     loop {
         offset = drain_jsonl_log(&log_path, offset, logger)?;
         if let Some(status) = child.try_wait()? {
-            let _ = drain_jsonl_log(&log_path, offset, logger)?;
+            drain_jsonl_log(&log_path, offset, logger)?;
             let _ = fs::remove_file(&request_path);
             if !status.success() {
+                let _ = fs::remove_file(&log_path);
                 return err(format!("管理员子进程失败，退出码: {status}"));
             }
             logger.info(format!(
                 "管理员子进程完成，用时 {} 秒",
                 start.elapsed().as_secs()
             ));
+            let _ = fs::remove_file(&log_path);
             return Ok(());
         }
         let elapsed = start.elapsed().as_secs();

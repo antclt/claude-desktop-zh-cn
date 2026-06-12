@@ -8,9 +8,13 @@ use std::{
     env, fs,
     panic::{catch_unwind, AssertUnwindSafe},
     path::PathBuf,
-    sync::{Mutex, OnceLock},
+    sync::{Mutex, MutexGuard, OnceLock},
+    time::Instant,
 };
 use tauri::{async_runtime, AppHandle, Emitter, Manager};
+
+/// finished 的 action log entry 保留时长（秒），超过后由 drain/init 清理。
+const ACTION_LOG_TTL_SECS: u64 = 60;
 
 static ACTION_LOGS: OnceLock<Mutex<HashMap<String, ActionLogState>>> = OnceLock::new();
 
@@ -38,6 +42,7 @@ struct ActionFinished {
 struct ActionLogState {
     logs: Vec<LogEvent>,
     finished: Option<ActionFinished>,
+    finished_at: Option<Instant>,
 }
 
 #[derive(Serialize)]
@@ -83,33 +88,48 @@ fn action_logs() -> &'static Mutex<HashMap<String, ActionLogState>> {
     ACTION_LOGS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+/// 获取 action log 锁；若 mutex 已 poison 则恢复而非 panic。
+fn lock_action_logs() -> MutexGuard<'static, HashMap<String, ActionLogState>> {
+    action_logs().lock().unwrap_or_else(|e| {
+        eprintln!("[warn] action log mutex was poisoned, recovering");
+        e.into_inner()
+    })
+}
+
 fn init_action_log(action_id: &str) {
-    let mut logs = action_logs().lock().expect("action log lock poisoned");
+    let mut logs = lock_action_logs();
     if logs.len() > 64 {
-        logs.retain(|_, state| state.finished.is_none());
+        logs.retain(|_, state| match state.finished_at {
+            Some(t) => t.elapsed().as_secs() < ACTION_LOG_TTL_SECS,
+            None => true, // 未 finished 的 entry 保留
+        });
     }
     logs.entry(action_id.to_string()).or_insert(ActionLogState {
         logs: Vec::new(),
         finished: None,
+        finished_at: None,
     });
 }
 
 fn record_action_log(action_id: &str, event: LogEvent) {
-    let mut logs = action_logs().lock().expect("action log lock poisoned");
+    let mut logs = lock_action_logs();
     let state = logs.entry(action_id.to_string()).or_insert(ActionLogState {
         logs: Vec::new(),
         finished: None,
+        finished_at: None,
     });
     state.logs.push(event);
 }
 
 fn finish_action_log(action_id: &str, finished: ActionFinished) {
-    let mut logs = action_logs().lock().expect("action log lock poisoned");
+    let mut logs = lock_action_logs();
     let state = logs.entry(action_id.to_string()).or_insert(ActionLogState {
         logs: Vec::new(),
         finished: None,
+        finished_at: None,
     });
     state.finished = Some(finished);
+    state.finished_at = Some(Instant::now());
 }
 
 fn tauri_resource_dir(app: &AppHandle) -> Option<PathBuf> {
@@ -212,7 +232,7 @@ fn install_patch(app: AppHandle, action_id: String, request: InstallRequest) -> 
 
 #[tauri::command]
 fn drain_action_logs(action_id: String, offset: usize) -> ActionLogDrain {
-    let mut logs = action_logs().lock().expect("action log lock poisoned");
+    let mut logs = lock_action_logs();
     let Some(state) = logs.get(&action_id) else {
         return ActionLogDrain {
             logs: Vec::new(),
@@ -224,8 +244,11 @@ fn drain_action_logs(action_id: String, offset: usize) -> ActionLogDrain {
     let drained_logs = state.logs[start..].to_vec();
     let next_offset = state.logs.len();
     let finished = state.finished.clone();
-    // 若已完成且前端已拿到全部日志，清理该 entry
-    if state.finished.is_some() && next_offset == state.logs.len() {
+    // M6: 仅当 finished 且 TTL 过期后才清理 entry，避免前端 IPC 重试时数据丢失
+    let should_remove = state
+        .finished_at
+        .is_some_and(|t| t.elapsed().as_secs() >= ACTION_LOG_TTL_SECS);
+    if should_remove {
         logs.remove(&action_id);
     }
     ActionLogDrain {
@@ -253,14 +276,13 @@ fn install_resource_update(
     action_id: String,
     zipball_url: String,
     release: String,
-    repo: String,
 ) -> ActionStarted {
     spawn_background_action(
         app,
         "更新补丁资源",
         action_id,
         move |logger, resource_dir| {
-            platform::install_resource_update(resource_dir, &zipball_url, &release, &repo, &logger)
+            platform::install_resource_update(resource_dir, &zipball_url, &release, &logger)
         },
     )
 }

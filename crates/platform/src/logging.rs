@@ -1,3 +1,12 @@
+//! 日志记录工具模块。
+//!
+//! 提供 `FileLogger`：基于 jsonl 格式的事件日志文件 sink，每行一个 JSON 事件。
+//! 在 Windows 平台上，子进程输出可能是 OEM 编码（如 GBK/CP936），本模块在写入前会解码为 UTF-8。
+//!
+//! `run_command` 是跨平台命令执行 helper，自动捕获 stdout/stderr 并按级别记录到 logger。
+//! 在 Windows 上调用 `hide_command_window` 在子进程上设置 `CREATE_NO_WINDOW` 标志，
+//! 避免命令行窗口闪烁。
+
 use claude_zh_core::{err, LogEvent, LogSink, LogSinkExt, Result};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;

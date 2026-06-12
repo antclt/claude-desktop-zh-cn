@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
+use crate::{err, Result};
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallRequest {
@@ -64,4 +66,64 @@ pub struct InstallPaths<'a> {
     pub source_resources: &'a Path,
     pub target_resources: &'a Path,
     pub mac_app_root: Option<&'a Path>,
+}
+
+pub const SUPPORTED_LANGUAGES: &[&str] = &["zh-CN", "zh-TW", "zh-HK"];
+pub const SUPPORTED_MODES: &[&str] = &["safe", "official"];
+
+pub fn validate_install_request(req: &InstallRequest) -> Result<()> {
+    if !SUPPORTED_LANGUAGES.contains(&req.language.as_str()) {
+        return err(format!(
+            "不支持的语言: {}（支持: {}）",
+            req.language,
+            SUPPORTED_LANGUAGES.join(", ")
+        ));
+    }
+    if !SUPPORTED_MODES.contains(&req.mode.as_str()) {
+        return err(format!(
+            "不支持的模式: {}（支持: {}）",
+            req.mode,
+            SUPPORTED_MODES.join(", ")
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn req(language: &str, mode: &str) -> InstallRequest {
+        InstallRequest {
+            language: language.to_string(),
+            mode: mode.to_string(),
+            launch_after: false,
+            dry_run: false,
+        }
+    }
+
+    #[test]
+    fn validate_install_request_accepts_supported_combos() {
+        assert!(validate_install_request(&req("zh-CN", "safe")).is_ok());
+        assert!(validate_install_request(&req("zh-TW", "official")).is_ok());
+        assert!(validate_install_request(&req("zh-HK", "safe")).is_ok());
+    }
+
+    #[test]
+    fn validate_install_request_rejects_unsupported_language() {
+        assert!(validate_install_request(&req("fr-FR", "safe")).is_err());
+        assert!(validate_install_request(&req("en-US", "safe")).is_err());
+    }
+
+    #[test]
+    fn validate_install_request_rejects_unsupported_mode() {
+        assert!(validate_install_request(&req("zh-CN", "install")).is_err());
+        assert!(validate_install_request(&req("zh-CN", "uninstall")).is_err());
+    }
+
+    #[test]
+    fn validate_install_request_rejects_empty() {
+        assert!(validate_install_request(&req("", "safe")).is_err());
+        assert!(validate_install_request(&req("zh-CN", "")).is_err());
+    }
 }

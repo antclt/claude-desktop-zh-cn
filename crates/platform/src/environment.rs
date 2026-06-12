@@ -126,7 +126,7 @@ fn windows_claude_version_key(path: &Path, prefix: &str) -> Vec<u32> {
 }
 
 #[cfg(windows)]
-fn compare_windows_claude_paths(prefix: &str, a: &PathBuf, b: &PathBuf) -> std::cmp::Ordering {
+fn compare_windows_claude_paths(prefix: &str, a: &Path, b: &Path) -> std::cmp::Ordering {
     windows_claude_version_key(b, prefix)
         .cmp(&windows_claude_version_key(a, prefix))
         .then_with(|| {

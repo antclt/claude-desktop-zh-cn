@@ -11,6 +11,7 @@
 //!        与原桌面用户不同，写入会写到错误用户；
 //!     2. 官方文档明确支持 HKLM 路径；
 //!     3. 一次写入全体用户生效，对多用户机器更可控。
+//!
 //!   写 HKLM\Software\Policies 需管理员，所以从 actions 层走 elevation 流程。
 //!   读取用 KEY_READ（仅支持 64 位进程；本项目仅发 x64 构建）。
 //! - macOS：通过 `defaults` 命令写入 `com.anthropic.claudefordesktop` 域的

@@ -1,4 +1,4 @@
-use claude_zh_core::{sync_skills_impl, CoreError, InstallRequest, LogSink, LogSinkExt, Result};
+use claude_zh_core::{sync_skills_impl, validate_install_request, CoreError, InstallRequest, LogSink, LogSinkExt, Result};
 use std::path::Path;
 
 use crate::{
@@ -10,6 +10,7 @@ use crate::{
 };
 
 pub fn install_patch(resources: &Path, req: &InstallRequest, logger: &dyn LogSink) -> Result<()> {
+    validate_install_request(req)?;
     logger.info(format!(
         "安装请求: language={}, mode={}, launch_after={}, dry_run={}",
         req.language, req.mode, req.launch_after, req.dry_run
