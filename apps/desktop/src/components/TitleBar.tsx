@@ -1,8 +1,6 @@
-import { useState } from "react"
 import { X, Minus, Maximize2 } from "lucide-react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { isMacOS } from "@/lib/platform"
-import { cn } from "@/lib/utils"
 
 /* ─────────────────────────────── 公共 ─────────────────────────────── */
 
@@ -26,9 +24,7 @@ function MacTitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className={cn(
-        "relative flex items-center h-[28px] bg-background border-b border-border select-none shrink-0"
-      )}
+      className="relative flex items-center h-[28px] bg-background border-b border-border select-none shrink-0"
     >
       {/* 红绿灯按钮区域 —— 排除拖拽 */}
       <div
@@ -68,24 +64,18 @@ function TrafficLight({
   title: string
   children: React.ReactNode
 }) {
-  const [hovered, setHovered] = useState(false)
-
   return (
     <button
       type="button"
       title={title}
       aria-label={title}
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       className="group relative w-3 h-3 rounded-full border border-black/[0.06] flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
       style={{ backgroundColor: color }}
     >
-      {hovered && (
-        <span className="text-black/45" style={{ fontSize: 10, lineHeight: 1 }}>
-          {children}
-        </span>
-      )}
+      <span className="text-black/45" style={{ fontSize: 10, lineHeight: 1 }}>
+        {children}
+      </span>
     </button>
   )
 }

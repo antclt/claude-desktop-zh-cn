@@ -29,8 +29,14 @@ export function StatusSummary({
 
   // 三个互斥状态
   const isLoading = env === null;
-  const isError = env !== null && !env.claudePath;
-  const isReady = env !== null && Boolean(env.claudePath);
+  const isError =
+    env !== null &&
+    (!env.claudePath || !env.resourcesOk || (env.resourceIssues?.length ?? 0) > 0);
+  const isReady =
+    env !== null &&
+    Boolean(env.claudePath) &&
+    env.resourcesOk &&
+    (env.resourceIssues?.length ?? 0) === 0;
 
   // B 态时序控制
   const [showSuccess, setShowSuccess] = useState(false);
@@ -188,14 +194,14 @@ export function StatusSummary({
             className="text-[11px] font-medium text-[hsl(var(--error))] truncate"
             title={
               lastError ||
-              env?.warnings?.[0] ||
               env?.resourceIssues?.[0] ||
+              env?.warnings?.[0] ||
               "环境检查未通过"
             }
           >
             {lastError ||
-              env?.warnings?.[0] ||
               env?.resourceIssues?.[0] ||
+              env?.warnings?.[0] ||
               "环境检查未通过"}
           </span>
         </div>

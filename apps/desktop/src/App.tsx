@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, LifeBuoy, Loader2, Star } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { LogPanel } from "./components/LogPanel";
 import { StatusSummary } from "./components/StatusSummary";
 import { TitleBar } from "./components/TitleBar";
@@ -21,14 +22,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useActionRunner } from "./hooks/useActionRunner";
 import { useEnvironment } from "./hooks/useEnvironment";
-import { usePhysicalWindowSize } from "./hooks/usePhysicalWindowSize";
 import { useResourceRelease } from "./hooks/useResourceRelease";
 import { useTheme } from "./hooks/useTheme";
 import { languages, modes } from "./constants";
 import type { ActionStarted, Language, PatchMode } from "./types";
 
 export default function App() {
-  usePhysicalWindowSize();
   const { theme } = useTheme();
   const { env, detectEnvironment } = useEnvironment();
   const {
@@ -101,7 +100,7 @@ export default function App() {
             <div className="flex rounded-xl overflow-hidden h-8 select-none bg-neutral-100/60 dark:bg-neutral-800/30 ring-1 ring-border/30 dark:ring-border/20">
               <button
                 type="button"
-                onClick={() => window.open("https://github.com/anthropics/claude-code/issues", "_blank")}
+                onClick={() => void openUrl("https://github.com/anthropics/claude-code/issues")}
                 className="flex-1 flex items-center justify-center gap-1.5 text-neutral-600 dark:text-neutral-300 hover:text-sky-700 dark:hover:text-sky-300 hover:bg-sky-500/[0.06] dark:hover:bg-sky-400/[0.08] transition-all duration-200 cursor-pointer active:scale-[0.98] group"
                 title="去 GitHub Issues 反馈问题"
                 aria-label="遇到问题"
@@ -112,7 +111,7 @@ export default function App() {
               <div className="w-px bg-border/30 self-stretch" />
               <button
                 type="button"
-                onClick={() => window.open("https://github.com/anthropics/claude-code", "_blank")}
+                onClick={() => void openUrl("https://github.com/anthropics/claude-code")}
                 className="flex-1 flex items-center justify-center gap-1.5 text-neutral-600 dark:text-neutral-300 hover:text-amber-800 dark:hover:text-amber-200 hover:bg-amber-500/[0.06] dark:hover:bg-amber-400/[0.08] transition-all duration-200 cursor-pointer active:scale-[0.98] group"
                 title="给 Claude Code 点个 Star"
                 aria-label="点个 Star"
