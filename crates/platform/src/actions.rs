@@ -1,14 +1,12 @@
-use claude_zh_core::{
-    config_library_set_auto_updates, sync_skills_impl, CoreError, InstallRequest, LogSink,
-    LogSinkExt, Result,
-};
+use claude_zh_core::{sync_skills_impl, CoreError, InstallRequest, LogSink, LogSinkExt, Result};
 use std::path::Path;
 
 use crate::{
+    auto_update,
     elevation::run_elevated_cli,
     environment::{detect_claude, is_admin},
     os::{launch_claude, platform_install_patch, platform_restore_patch},
-    paths::{cc_switch_skills_dir, config_library_paths, skills_plugin_root},
+    paths::{cc_switch_skills_dir, skills_plugin_root},
     resources::resolve_resources,
 };
 
@@ -22,7 +20,7 @@ pub fn install_patch(resources: &Path, req: &InstallRequest, logger: &dyn LogSin
         logger.info("当前进程不是管理员权限，切换到系统授权安装。");
         let mut elevated_req = req.clone();
         elevated_req.launch_after = false;
-        run_elevated_cli("install_patch", Some(elevated_req), None, resources, logger)?;
+        run_elevated_cli("install_patch", Some(elevated_req), None, Some(resources), logger)?;
         if req.launch_after {
             logger.info("提权安装已完成，正在从主进程启动 Claude Desktop。");
             if let Some((app, _, _)) = detect_claude() {
@@ -46,27 +44,29 @@ pub fn restore_patch(logger: &dyn LogSink) -> Result<()> {
     if !is_admin() {
         let resources = resolve_resources(None)?;
         logger.info("当前进程不是管理员权限，切换到系统授权恢复。");
-        return run_elevated_cli("restore_patch", None, None, &resources, logger);
+        return run_elevated_cli("restore_patch", None, None, Some(&resources), logger);
     }
     logger.info("当前进程已有管理员权限，直接执行恢复。");
     platform_restore_patch(logger)
 }
 
 pub fn set_auto_updates(enabled: bool, logger: &dyn LogSink) -> Result<()> {
-    logger.info(format!(
-        "自动更新请求: {}",
-        if enabled { "开启" } else { "停止" }
-    ));
-    let paths = config_library_paths();
-    if paths.is_empty() {
-        logger.warn("未找到 configLibrary 路径，无法写入自动更新设置。");
-        return Ok(());
+    // Windows: HKCU\Software\Policies\Claude 子树受系统保护，写入必须 elevation。
+    // 读取永远不需要，所以 UI 状态显示不会受影响。macOS 不需要。
+    #[cfg(windows)]
+    {
+        if !is_admin() {
+            logger.info("当前进程不是管理员权限，切换到系统授权写入注册表策略。");
+            return run_elevated_cli(
+                "set_auto_updates",
+                None,
+                Some(enabled),
+                None,
+                logger,
+            );
+        }
     }
-    for path in paths {
-        config_library_set_auto_updates(&path, enabled, logger)?;
-    }
-    logger.info("自动更新设置已写入。");
-    Ok(())
+    auto_update::set_auto_updates(enabled, logger)
 }
 
 pub fn sync_cc_switch_skills(logger: &dyn LogSink) -> Result<()> {

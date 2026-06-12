@@ -297,6 +297,17 @@ fn run_cli_file(path: PathBuf) -> i32 {
     }
 }
 
+fn parse_enabled_arg(val: &str) -> bool {
+    match val {
+        "true" => true,
+        "false" => false,
+        _ => {
+            eprintln!("--enabled 无效值: {val}（期望 true 或 false）");
+            std::process::exit(2);
+        }
+    }
+}
+
 pub fn run() {
     let mut args = env::args().skip(1);
     if let Some(first) = args.next() {
@@ -312,12 +323,36 @@ pub fn run() {
                 eprintln!("missing --cli-action value");
                 std::process::exit(2);
             };
+
+            // 解析 --enabled 参数（支持 --enabled=true 或 --enabled true）
+            let mut enabled: Option<bool> = None;
+            let remaining: Vec<String> = args.collect();
+            let mut iter = remaining.iter();
+            while let Some(arg) = iter.next() {
+                if arg == "--enabled" {
+                    let Some(val) = iter.next() else {
+                        eprintln!("--enabled 缺少值（期望 true 或 false）");
+                        std::process::exit(2);
+                    };
+                    enabled = Some(parse_enabled_arg(val));
+                    break;
+                } else if let Some(val) = arg.strip_prefix("--enabled=") {
+                    enabled = Some(parse_enabled_arg(val));
+                    break;
+                }
+            }
+
+            if action == "set_auto_updates" && enabled.is_none() {
+                eprintln!("set_auto_updates 需要 --enabled 参数");
+                std::process::exit(2);
+            }
+
             platform::set_file_logger_silent_stdout(true);
             let logger = FileLogger::new(env::temp_dir().join("claude-zh-cn-rs-cli.jsonl"));
             let request = CliRequest {
                 action,
                 install: None,
-                enabled: None,
+                enabled,
                 resources_path: None,
                 log_path: None,
             };

@@ -1,4 +1,4 @@
-use claude_zh_core::{auto_updates_enabled, read_json, EnvironmentReport};
+use claude_zh_core::{read_json, EnvironmentReport};
 use std::{env, fs, path::PathBuf, process::Command};
 #[cfg(windows)]
 use std::{ffi::OsStr, path::Path, process::Stdio};
@@ -6,7 +6,8 @@ use std::{ffi::OsStr, path::Path, process::Stdio};
 #[cfg(windows)]
 use crate::logging::hide_command_window;
 use crate::{
-    paths::{cc_switch_skills_dir, claude_config_paths, config_library_paths, skills_plugin_root},
+    auto_update::auto_updates_enabled,
+    paths::{cc_switch_skills_dir, claude_config_paths, skills_plugin_root},
     resources::resolve_resources,
 };
 
@@ -43,7 +44,7 @@ pub fn detect_environment(resources_dir: Option<PathBuf>) -> EnvironmentReport {
         backup_count,
         cc_switch_skills_dir: cc_switch_skills_dir().map(|path| path.display().to_string()),
         skills_plugin_root: skills_plugin_root().map(|path| path.display().to_string()),
-        auto_updates_enabled: auto_updates_enabled(config_library_paths()),
+        auto_updates_enabled: auto_updates_enabled(),
         warnings,
     }
 }

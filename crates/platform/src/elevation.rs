@@ -14,28 +14,31 @@ use uuid::Uuid;
 #[cfg(windows)]
 use crate::logging::hide_command_window;
 use crate::{
-    actions::{
-        install_patch, restore_patch, set_auto_updates, sync_cc_switch_skills,
-        unsync_cc_switch_skills,
-    },
+    actions::{install_patch, restore_patch, sync_cc_switch_skills, unsync_cc_switch_skills},
+    auto_update::set_auto_updates,
     resources::resolve_resources,
 };
 
 pub fn run_cli_request(request: CliRequest, logger: &dyn LogSink) -> Result<()> {
-    let resources = if let Some(path) = request.resources_path {
-        path
-    } else {
-        resolve_resources(None)?
-    };
     match request.action.as_str() {
         "install_patch" => {
+            let resources = if let Some(path) = request.resources_path {
+                path
+            } else {
+                resolve_resources(None)?
+            };
             let install = request
                 .install
                 .ok_or_else(|| CoreError::Message("缺少 install 参数。".to_string()))?;
             install_patch(&resources, &install, logger)
         }
         "restore_patch" => restore_patch(logger),
-        "set_auto_updates" => set_auto_updates(request.enabled.unwrap_or(true), logger),
+        "set_auto_updates" => {
+            let enabled = request
+                .enabled
+                .ok_or_else(|| CoreError::Message("缺少 enabled 参数。".to_string()))?;
+            set_auto_updates(enabled, logger)
+        }
         "sync_cc_switch_skills" => sync_cc_switch_skills(logger),
         "unsync_cc_switch_skills" => unsync_cc_switch_skills(logger),
         "watch-once" => {
@@ -50,7 +53,7 @@ pub fn run_elevated_cli(
     action: &str,
     install: Option<claude_zh_core::InstallRequest>,
     enabled: Option<bool>,
-    resources_path: &Path,
+    resources_path: Option<&Path>,
     logger: &dyn LogSink,
 ) -> Result<()> {
     let log_path = env::temp_dir().join(format!("claude-zh-cn-rs-{}.jsonl", Uuid::new_v4()));
@@ -58,7 +61,7 @@ pub fn run_elevated_cli(
         action: action.to_string(),
         install,
         enabled,
-        resources_path: Some(resources_path.to_path_buf()),
+        resources_path: resources_path.map(|p| p.to_path_buf()),
         log_path: Some(log_path.clone()),
     };
     let request_path = env::temp_dir().join(format!("claude-zh-cn-rs-{}.json", Uuid::new_v4()));
@@ -68,7 +71,9 @@ pub fn run_elevated_cli(
     logger.info(format!("当前可执行文件: {}", exe.display()));
     logger.info(format!("提权请求文件: {}", request_path.display()));
     logger.info(format!("提权日志文件: {}", log_path.display()));
-    logger.info(format!("随包资源目录: {}", resources_path.display()));
+    if let Some(rp) = resources_path {
+        logger.info(format!("随包资源目录: {}", rp.display()));
+    }
     if let Some(install) = &request.install {
         logger.info(format!(
             "安装参数: language={}, mode={}, launch_after={}, dry_run={}",
